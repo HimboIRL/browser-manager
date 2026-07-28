@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCK Browser Manager</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ===================== Header ===================== -->
+      <header class="header">
+        <img class="header__logo" src="assets/logo.png" alt="McKinney" />
+        <div class="header__meta">
+          <span class="header__title">Browser Manager</span>
+          <span class="header__subtitle">Enterprise Edition</span>
+        </div>
+      </header>
+
+      <!-- ===================== Tab bar ===================== -->
+      <nav class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab is-active" role="tab" data-tab="cache" aria-selected="true">
+          Cache
+        </button>
+        <button class="tab" role="tab" data-tab="performance" aria-selected="false">
+          Performance
+        </button>
+        <button class="tab" role="tab" data-tab="privacy" aria-selected="false">
+          Privacy
+        </button>
+        <button class="tab" role="tab" data-tab="settings" aria-selected="false">
+          Settings
+        </button>
+      </nav>
+
+      <!-- ===================== Tab panels ===================== -->
+      <main class="panels">
+        <!-- ------- Tab 1: Cache ------- -->
+        <section class="panel is-active" data-panel="cache" role="tabpanel">
+          <p class="panel__lead">
+            Clear your browser cache to free space and load the latest version
+            of every site.
+          </p>
+
+          <button id="clearCacheBtn" class="btn-clear" type="button">
+            <span class="btn-clear__icon" aria-hidden="true">
+              <!-- Broom / refresh SVG -->
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
+                <path d="M3 21v-5h5" />
+              </svg>
+            </span>
+            <span class="btn-clear__label">Clear Cache</span>
+
+            <!-- Spinner (shown while clearing) -->
+            <span class="btn-clear__spinner" aria-hidden="true"></span>
+          </button>
+
+          <!-- Success state -->
+          <div id="clearSuccess" class="success" hidden>
+            <span class="success__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            <span>Cache cleared successfully</span>
+          </div>
+
+          <p class="last-cleared">
+            Last cleared: <span id="lastCleared">Never</span>
+          </p>
+        </section>
+
+        <!-- ------- Tab 2: Performance ------- -->
+        <section class="panel" data-panel="performance" role="tabpanel">
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Memory Saver</span>
+              <span class="toggle-row__sub">
+                Discards background tabs inactive for over 30 minutes to free
+                up RAM.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="memorySaver" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Tab Hibernation</span>
+              <span class="toggle-row__sub">
+                Automatically suspends tabs inactive for over 1 hour.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="tabHibernation" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Preload Pages</span>
+              <span class="toggle-row__sub">
+                Predicts and preloads pages for faster browsing.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="preloadPages" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+        </section>
+
+        <!-- ------- Tab 3: Privacy ------- -->
+        <section class="panel" data-panel="privacy" role="tabpanel">
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Do Not Track</span>
+              <span class="toggle-row__sub">
+                Sends a "Do Not Track" request with your browsing traffic.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="doNotTrack" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Block 3rd Party Cookies</span>
+              <span class="toggle-row__sub">
+                Prevents third-party sites from setting tracking cookies.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="blockThirdPartyCookies" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Block JavaScript</span>
+              <span class="toggle-row__sub toggle-row__sub--warn">
+                Blocks JavaScript on all sites. May break site functionality.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="blockJavaScript" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">WebRTC Protection</span>
+              <span class="toggle-row__sub">
+                Prevents WebRTC from leaking your local IP address.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="webRTCProtection" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+        </section>
+
+        <!-- ------- Tab 4: Settings ------- -->
+        <section class="panel" data-panel="settings" role="tabpanel">
+          <div class="toggle-row">
+            <div class="toggle-row__text">
+              <span class="toggle-row__title">Auto-clear cache on startup</span>
+              <span class="toggle-row__sub">
+                Automatically clears the cache every time Chrome starts.
+                Recommended by IT.
+              </span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="clearOnStartup" />
+              <span class="switch__slider"></span>
+            </label>
+          </div>
+
+          <div class="managed-note">
+            <span class="managed-note__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+              </svg>
+            </span>
+            <span>
+              This extension is centrally managed by McKinney IT. Some options
+              may be enforced by policy.
+            </span>
+          </div>
+        </section>
+      </main>
+
+      <!-- ===================== Footer ===================== -->
+      <footer class="footer">
+        <span class="footer__managed">
+          Managed by
+          <a
+            id="helpDeskLink"
+            href="https://servicedesk.mckinney.com/support/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            >IT Help Desk</a
+          >
+        </span>
+        <span class="footer__version">v<span id="versionNumber">1.0.0</span></span>
+      </footer>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
