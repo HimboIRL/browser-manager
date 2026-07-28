@@ -91,6 +91,11 @@ body {
   background: var(--mck-white);
 }
 
+/* Hidden until the user opens Advanced Settings */
+.tabs.is-hidden {
+  display: none;
+}
+
 .tab {
   flex: 1;
   appearance: none;
@@ -253,6 +258,50 @@ body {
 .last-cleared span {
   font-weight: 600;
   color: var(--mck-charcoal);
+}
+
+/* ===================== Advanced Settings toggle ===================== */
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 11px 12px;
+  border: 1px solid var(--mck-gray-border);
+  border-radius: var(--mck-radius);
+  background: var(--mck-gray);
+  color: var(--mck-charcoal);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.advanced-toggle:hover {
+  background: #efefef;
+  border-color: var(--mck-gray-off);
+}
+
+.advanced-toggle__icon {
+  display: inline-flex;
+  color: var(--mck-maroon);
+}
+
+.advanced-toggle__label {
+  flex: 1;
+  text-align: left;
+}
+
+.advanced-toggle__chevron {
+  display: inline-flex;
+  color: var(--mck-text-sub);
+  transition: transform 0.2s ease;
+}
+
+/* Rotate chevron down when tabs are revealed */
+.advanced-toggle.is-open .advanced-toggle__chevron {
+  transform: rotate(90deg);
 }
 
 /* ===================== Toggle rows ===================== */

@@ -132,6 +132,27 @@ function initTabs() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Advanced Settings reveal
+ * Keeps the popup clean by default: only the Cache view shows until the
+ * user chooses to open the Performance / Privacy / Settings tabs.
+ * ------------------------------------------------------------------ */
+function initAdvanced() {
+  const btn = $("advancedToggle");
+  const tabBar = $("tabBar");
+  if (!btn || !tabBar) return;
+
+  btn.addEventListener("click", () => {
+    tabBar.classList.remove("is-hidden");
+    btn.classList.add("is-open");
+    btn.setAttribute("aria-expanded", "true");
+
+    // Jump straight to the first advanced tab (Performance).
+    const perfTab = document.querySelector('.tab[data-tab="performance"]');
+    if (perfTab) perfTab.click();
+  });
+}
+
+/* ------------------------------------------------------------------ *
  * Clear Cache action
  * ------------------------------------------------------------------ */
 function initClearCache() {
@@ -341,6 +362,7 @@ async function initLastCleared() {
  * ------------------------------------------------------------------ */
 document.addEventListener("DOMContentLoaded", async () => {
   initTabs();
+  initAdvanced();
   initClearCache();
   initFooter();
   await initLastCleared();
