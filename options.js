@@ -87,23 +87,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     toggle.checked = DEFAULT_CLEAR_ON_STARTUP;
   }
 
-  // Changing this setting requires the admin password. Intercept the click,
-  // prevent the automatic toggle, prompt, and only commit if authorized.
-  toggle.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const current = toggle.checked;
-    const intended = !current;
+  // Changing this setting requires the admin password. We listen on "change"
+  // (reliable across label/checkbox interactions) with a re-entrancy guard,
+  // prompt for the password, and only commit if authorized. Reverting via
+  // `.checked = ...` does not re-fire "change", so there is no loop.
+  let gateBusy = false;
+  toggle.addEventListener("change", async () => {
+    if (gateBusy) return;
+    const desired = toggle.checked;
+    const previous = !desired;
 
+    gateBusy = true;
     const ok = await promptAdmin();
+    gateBusy = false;
+
     if (ok) {
-      toggle.checked = intended;
       try {
-        await chrome.storage.local.set({ clearOnStartup: intended });
+        await chrome.storage.local.set({ clearOnStartup: desired });
       } catch (err) {
         // console.debug("MCK options: save failed", err);
       }
     } else {
-      toggle.checked = current;
+      toggle.checked = previous;
     }
   });
 });

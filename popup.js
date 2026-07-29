@@ -325,22 +325,28 @@ async function initToggles() {
     );
   });
 
-  // Auto-clear on startup is password protected. We intercept the change,
-  // revert the visual toggle, ask for the admin password, and only commit
-  // the new value if the correct password is entered.
+  // Auto-clear on startup is password protected. We use the "change" event
+  // (same reliable pattern as every other toggle) instead of intercepting
+  // clicks, which avoids the label/checkbox double-fire that could leave the
+  // toggle out of sync with the entered password. A re-entrancy guard stops
+  // the prompt from opening twice, and reverting via `.checked = ...` does
+  // NOT re-fire "change", so there is no feedback loop.
   const startupEl = $("clearOnStartup");
   if (startupEl) {
-    startupEl.addEventListener("click", async (e) => {
-      e.preventDefault(); // Stop the checkbox from flipping on its own.
-      const current = startupEl.checked;
-      const intended = !current;
+    let gateBusy = false;
+    startupEl.addEventListener("change", async () => {
+      if (gateBusy) return;
+      const desired = startupEl.checked; // state the user just switched to
+      const previous = !desired;
 
+      gateBusy = true;
       const ok = await promptAdmin();
+      gateBusy = false;
+
       if (ok) {
-        startupEl.checked = intended;
-        await saveSetting("clearOnStartup", intended);
+        await saveSetting("clearOnStartup", desired);
       } else {
-        startupEl.checked = current; // Leave unchanged.
+        startupEl.checked = previous; // revert; does not re-trigger change
       }
     });
   }
