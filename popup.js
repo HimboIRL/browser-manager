@@ -24,6 +24,14 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ------------------------------------------------------------------ *
+ * Administrator password required to change protected settings.
+ * NOTE: Client-side extensions cannot truly hide a secret — a
+ * determined user can read this value from the source. This gate is a
+ * deterrent against casual/accidental changes, not a security boundary.
+ * ------------------------------------------------------------------ */
+const ADMIN_PASSWORD = "b%qp!NwR";
+
+/* ------------------------------------------------------------------ *
  * Small helpers
  * ------------------------------------------------------------------ */
 const $ = (id) => document.getElementById(id);
@@ -111,6 +119,63 @@ function initTabs() {
         p.classList.toggle("is-active", p.dataset.panel === target);
       });
     });
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Admin password modal
+ * Returns a Promise that resolves true if the correct password was
+ * entered, false if the user cancelled.
+ * ------------------------------------------------------------------ */
+function promptAdmin() {
+  return new Promise((resolve) => {
+    const modal = $("adminModal");
+    const input = $("adminPassword");
+    const error = $("adminError");
+    const confirmBtn = $("adminConfirm");
+    const cancelBtn = $("adminCancel");
+    const backdrop = modal.querySelector(".modal__backdrop");
+
+    // Reset state each time the modal opens.
+    input.value = "";
+    input.classList.remove("is-error");
+    error.hidden = true;
+    modal.hidden = false;
+    setTimeout(() => input.focus(), 50);
+
+    function cleanup(result) {
+      modal.hidden = true;
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+      backdrop.removeEventListener("click", onCancel);
+      input.removeEventListener("keydown", onKey);
+      resolve(result);
+    }
+
+    function onConfirm() {
+      if (input.value === ADMIN_PASSWORD) {
+        cleanup(true);
+      } else {
+        input.classList.add("is-error");
+        error.hidden = false;
+        input.value = "";
+        input.focus();
+      }
+    }
+
+    function onCancel() {
+      cleanup(false);
+    }
+
+    function onKey(e) {
+      if (e.key === "Enter") onConfirm();
+      else if (e.key === "Escape") onCancel();
+    }
+
+    confirmBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onCancel);
+    backdrop.addEventListener("click", onCancel);
+    input.addEventListener("keydown", onKey);
   });
 }
 
@@ -260,9 +325,25 @@ async function initToggles() {
     );
   });
 
-  bindToggle("clearOnStartup", async (v) => {
-    await saveSetting("clearOnStartup", v);
-  });
+  // Auto-clear on startup is password protected. We intercept the change,
+  // revert the visual toggle, ask for the admin password, and only commit
+  // the new value if the correct password is entered.
+  const startupEl = $("clearOnStartup");
+  if (startupEl) {
+    startupEl.addEventListener("click", async (e) => {
+      e.preventDefault(); // Stop the checkbox from flipping on its own.
+      const current = startupEl.checked;
+      const intended = !current;
+
+      const ok = await promptAdmin();
+      if (ok) {
+        startupEl.checked = intended;
+        await saveSetting("clearOnStartup", intended);
+      } else {
+        startupEl.checked = current; // Leave unchanged.
+      }
+    });
+  }
 }
 
 function setChecked(id, value) {
