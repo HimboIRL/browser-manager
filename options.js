@@ -10,7 +10,7 @@ const DEFAULT_CLEAR_ON_STARTUP = true;
 /* Administrator password required to change protected settings.
  * NOTE: Client-side extensions cannot truly hide a secret — this gate is a
  * deterrent against casual/accidental changes, not a security boundary. */
-const ADMIN_PASSWORD = "b%qp!NwR";
+const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";
 
 /* ------------------------------------------------------------------ *
  * Admin password modal. Resolves true on correct password, false on cancel.

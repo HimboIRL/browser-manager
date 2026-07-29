@@ -45,6 +45,20 @@ This extension can be force-installed via the Google Admin console
 without publishing to the Chrome Web Store. Contact IT Help Desk for the managed
 deployment policy.
 
+## Setting the administrator password
+
+The "Auto-clear cache on startup" setting is protected by an administrator password. 
+**Before deploying**, set your own password by editing:
+
+1. **`popup.js`** — Line 32: `const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";`
+2. **`options.js`** — Line 13: `const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";`
+
+Replace `"YOUR_PASSWORD_HERE"` with your chosen password in both files.
+
+⚠️ **Security note:** This is a client-side deterrent against accidental changes, not a true security boundary. 
+A determined user can read the password from the extension's source code. For truly enforced policies, 
+use Chrome Enterprise Policy controls via Google Admin.
+
 ## Development notes
 
 - No third-party libraries and no emojis — all iconography is inline SVG.

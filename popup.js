@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS = {
  * determined user can read this value from the source. This gate is a
  * deterrent against casual/accidental changes, not a security boundary.
  * ------------------------------------------------------------------ */
-const ADMIN_PASSWORD = "b%qp!NwR";
+const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";
 
 /* ------------------------------------------------------------------ *
  * Small helpers
