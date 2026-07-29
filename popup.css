@@ -445,7 +445,14 @@ body {
 .cog-icon:hover {
   color: var(--mck-orange);
   background: rgba(232, 75, 12, 0.08);
-  transform: translateY(-50%) rotate(45deg);
+}
+
+.cog-icon svg {
+  transition: transform 0.2s ease;
+}
+
+.cog-icon:hover svg {
+  transform: rotate(45deg);
 }
 
 /* ===================== Admin password modal ===================== */
