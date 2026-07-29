@@ -19,7 +19,6 @@ const DEFAULT_SETTINGS = {
   preloadPages: true,
   doNotTrack: false,
   blockThirdPartyCookies: false,
-  blockJavaScript: false,
   webRTCProtection: false,
   lastCleared: null
 };
@@ -94,22 +93,6 @@ function getPref(pref) {
   });
 }
 
-function getJavaScriptBlocked() {
-  return new Promise((resolve) => {
-    try {
-      chrome.contentSettings.javascript.get(
-        { primaryUrl: "https://example.com" },
-        (details) => {
-          if (chrome.runtime.lastError || !details) resolve(null);
-          else resolve(details.setting === "block");
-        }
-      );
-    } catch (e) {
-      resolve(null);
-    }
-  });
-}
-
 /* ------------------------------------------------------------------ *
  * Tab navigation
  * ------------------------------------------------------------------ */
@@ -132,19 +115,17 @@ function initTabs() {
 }
 
 /* ------------------------------------------------------------------ *
- * Advanced Settings reveal
+ * Advanced Settings reveal (cog icon in footer)
  * Keeps the popup clean by default: only the Cache view shows until the
- * user chooses to open the Performance / Privacy / Settings tabs.
+ * user clicks the cog to reveal Performance / Privacy / Settings tabs.
  * ------------------------------------------------------------------ */
 function initAdvanced() {
-  const btn = $("advancedToggle");
+  const cog = $("advancedCog");
   const tabBar = $("tabBar");
-  if (!btn || !tabBar) return;
+  if (!cog || !tabBar) return;
 
-  btn.addEventListener("click", () => {
+  cog.addEventListener("click", () => {
     tabBar.classList.remove("is-hidden");
-    btn.classList.add("is-open");
-    btn.setAttribute("aria-expanded", "true");
 
     // Jump straight to the first advanced tab (Performance).
     const perfTab = document.querySelector('.tab[data-tab="performance"]');
@@ -233,12 +214,6 @@ async function initToggles() {
     liveThird === null ? stored.blockThirdPartyCookies : liveThird === false
   );
 
-  const liveJs = await getJavaScriptBlocked();
-  setChecked(
-    "blockJavaScript",
-    liveJs === null ? stored.blockJavaScript : liveJs
-  );
-
   const liveRtc = await getPref(chrome.privacy.network.webRTCIPHandlingPolicy);
   setChecked(
     "webRTCProtection",
@@ -277,11 +252,6 @@ async function initToggles() {
     await setPref(chrome.privacy.websites.thirdPartyCookiesAllowed, !v);
   });
 
-  bindToggle("blockJavaScript", async (v) => {
-    await saveSetting("blockJavaScript", v);
-    await setJavaScript(v);
-  });
-
   bindToggle("webRTCProtection", async (v) => {
     await saveSetting("webRTCProtection", v);
     await setPref(
@@ -309,22 +279,6 @@ function setPref(pref, value) {
         void chrome.runtime.lastError;
         resolve();
       });
-    } catch (e) {
-      resolve();
-    }
-  });
-}
-
-function setJavaScript(block) {
-  return new Promise((resolve) => {
-    try {
-      chrome.contentSettings.javascript.set(
-        { primaryPattern: "<all_urls>", setting: block ? "block" : "allow" },
-        () => {
-          void chrome.runtime.lastError;
-          resolve();
-        }
-      );
     } catch (e) {
       resolve();
     }

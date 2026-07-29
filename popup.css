@@ -260,50 +260,6 @@ body {
   color: var(--mck-charcoal);
 }
 
-/* ===================== Advanced Settings toggle ===================== */
-.advanced-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 20px;
-  padding: 11px 12px;
-  border: 1px solid var(--mck-gray-border);
-  border-radius: var(--mck-radius);
-  background: var(--mck-gray);
-  color: var(--mck-charcoal);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease;
-}
-
-.advanced-toggle:hover {
-  background: #efefef;
-  border-color: var(--mck-gray-off);
-}
-
-.advanced-toggle__icon {
-  display: inline-flex;
-  color: var(--mck-maroon);
-}
-
-.advanced-toggle__label {
-  flex: 1;
-  text-align: left;
-}
-
-.advanced-toggle__chevron {
-  display: inline-flex;
-  color: var(--mck-text-sub);
-  transition: transform 0.2s ease;
-}
-
-/* Rotate chevron down when tabs are revealed */
-.advanced-toggle.is-open .advanced-toggle__chevron {
-  transform: rotate(90deg);
-}
-
 /* ===================== Toggle rows ===================== */
 .toggle-row {
   display: flex;
@@ -420,6 +376,7 @@ body {
   background: var(--mck-gray);
   font-size: 11px;
   color: var(--mck-text-sub);
+  position: relative;
 }
 
 .footer__managed a {
@@ -435,4 +392,29 @@ body {
 .footer__version {
   font-weight: 600;
   color: var(--mck-text-sub);
+}
+
+/* Advanced Settings cog icon */
+.cog-icon {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--mck-text-sub);
+  border-radius: 4px;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.cog-icon:hover {
+  color: var(--mck-maroon);
+  background: rgba(122, 21, 21, 0.08);
+}
+
+.cog-icon:active {
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
 }

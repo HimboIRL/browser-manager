@@ -20,7 +20,6 @@ const DEFAULT_SETTINGS = {
   preloadPages: true, // chrome.privacy.websites.networkPredictionEnabled.
   doNotTrack: false, // chrome.privacy.websites.doNotTrackEnabled.
   blockThirdPartyCookies: false, // chrome.privacy.websites.thirdPartyCookiesAllowed (false = block).
-  blockJavaScript: false, // chrome.contentSettings.javascript.
   webRTCProtection: false, // chrome.privacy.network.webRTCIPHandlingPolicy.
   lastCleared: null // Timestamp of last successful cache clear.
 };
@@ -103,17 +102,6 @@ async function applyThirdPartyCookies(block) {
   }
 }
 
-async function applyBlockJavaScript(block) {
-  try {
-    await chrome.contentSettings.javascript.set({
-      primaryPattern: "<all_urls>",
-      setting: block ? "block" : "allow"
-    });
-  } catch (e) {
-    // console.debug("MCK: applyBlockJavaScript failed", e);
-  }
-}
-
 async function applyWebRTCProtection(enabled) {
   try {
     await chrome.privacy.network.webRTCIPHandlingPolicy.set({
@@ -133,7 +121,6 @@ async function applyAllSettings(settings) {
   await applyPreloadPages(s.preloadPages);
   await applyDoNotTrack(s.doNotTrack);
   await applyThirdPartyCookies(s.blockThirdPartyCookies);
-  await applyBlockJavaScript(s.blockJavaScript);
   await applyWebRTCProtection(s.webRTCProtection);
   await syncAlarms(s);
 }
