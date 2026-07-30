@@ -1,34 +1,31 @@
 /**
- * MCK Browser Manager - Background Service Worker (Manifest V3)
+ * Browser Manager - Background Service Worker (Manifest V3)
  * -----------------------------------------------------------------
  * Responsibilities:
- *   1. Apply managed defaults on install (auto-clear cache = ON).
+ *   1. Apply managed defaults on install.
  *   2. On Chrome startup, clear cache if `clearOnStartup` is enabled and
  *      re-apply all stored privacy / performance settings.
- *   3. Run periodic alarms for Memory Saver and Tab Hibernation.
+ *   3. Run a periodic alarm for Tab Hibernation.
  *
- * Managed by McKinney IT Help Desk.
+ * Managed by IT Help Desk.
  */
 
 /* ------------------------------------------------------------------ *
- * Default settings
+ * Default settings (everything OFF by default).
  * ------------------------------------------------------------------ */
 const DEFAULT_SETTINGS = {
-  clearOnStartup: true, // Auto-clear cache on Chrome startup (default ON).
-  memorySaver: false, // Discard background tabs inactive > MEMORY_SAVER_MINUTES.
+  clearOnStartup: false, // Auto-clear cache on Chrome startup.
   tabHibernation: false, // Discard tabs inactive > HIBERNATION_MINUTES.
-  preloadPages: true, // chrome.privacy.websites.networkPredictionEnabled.
+  preloadPages: false, // chrome.privacy.websites.networkPredictionEnabled.
   doNotTrack: false, // chrome.privacy.websites.doNotTrackEnabled.
   blockThirdPartyCookies: false, // chrome.privacy.websites.thirdPartyCookiesAllowed (false = block).
   webRTCProtection: false, // chrome.privacy.network.webRTCIPHandlingPolicy.
   lastCleared: null // Timestamp of last successful cache clear.
 };
 
-const MEMORY_SAVER_MINUTES = 30; // Tabs inactive longer than this are discarded.
 const HIBERNATION_MINUTES = 60; // Tabs inactive longer than this are hibernated.
 
-const MEMORY_SAVER_ALARM = "mck-memory-saver";
-const HIBERNATION_ALARM = "mck-tab-hibernation";
+const HIBERNATION_ALARM = "bm-tab-hibernation";
 
 /* Tracks the last time each tab was activated (in-memory, best effort). */
 const tabLastActive = {};
@@ -41,7 +38,7 @@ async function getSettings() {
     const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
     return { ...DEFAULT_SETTINGS, ...stored };
   } catch (e) {
-    // console.debug("MCK: getSettings failed", e);
+    // console.debug("BM: getSettings failed", e);
     return { ...DEFAULT_SETTINGS };
   }
 }
@@ -50,7 +47,7 @@ async function setSetting(key, value) {
   try {
     await chrome.storage.local.set({ [key]: value });
   } catch (e) {
-    // console.debug("MCK: setSetting failed", e);
+    // console.debug("BM: setSetting failed", e);
   }
 }
 
@@ -63,7 +60,20 @@ async function clearCache() {
     await setSetting("lastCleared", Date.now());
     return true;
   } catch (e) {
-    // console.debug("MCK: clearCache failed", e);
+    // console.debug("BM: clearCache failed", e);
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Cookie clearing (triggered from the popup's quick-action menu)
+ * ------------------------------------------------------------------ */
+async function clearCookies() {
+  try {
+    await chrome.browsingData.removeCookies({ since: 0 });
+    return true;
+  } catch (e) {
+    // console.debug("BM: clearCookies failed", e);
     return false;
   }
 }
@@ -79,7 +89,7 @@ async function applyPreloadPages(enabled) {
       value: !!enabled
     });
   } catch (e) {
-    // console.debug("MCK: applyPreloadPages failed", e);
+    // console.debug("BM: applyPreloadPages failed", e);
   }
 }
 
@@ -87,7 +97,7 @@ async function applyDoNotTrack(enabled) {
   try {
     await chrome.privacy.websites.doNotTrackEnabled.set({ value: !!enabled });
   } catch (e) {
-    // console.debug("MCK: applyDoNotTrack failed", e);
+    // console.debug("BM: applyDoNotTrack failed", e);
   }
 }
 
@@ -98,7 +108,7 @@ async function applyThirdPartyCookies(block) {
       value: !block
     });
   } catch (e) {
-    // console.debug("MCK: applyThirdPartyCookies failed", e);
+    // console.debug("BM: applyThirdPartyCookies failed", e);
   }
 }
 
@@ -108,7 +118,7 @@ async function applyWebRTCProtection(enabled) {
       value: enabled ? "disable_non_proxied_udp" : "default"
     });
   } catch (e) {
-    // console.debug("MCK: applyWebRTCProtection failed", e);
+    // console.debug("BM: applyWebRTCProtection failed", e);
   }
 }
 
@@ -126,23 +136,18 @@ async function applyAllSettings(settings) {
 }
 
 /* ------------------------------------------------------------------ *
- * Alarms for Memory Saver & Tab Hibernation
+ * Alarm for Tab Hibernation
  * ------------------------------------------------------------------ */
 async function syncAlarms(settings) {
   const s = settings || (await getSettings());
   try {
-    if (s.memorySaver) {
-      await chrome.alarms.create(MEMORY_SAVER_ALARM, { periodInMinutes: 5 });
-    } else {
-      await chrome.alarms.clear(MEMORY_SAVER_ALARM);
-    }
     if (s.tabHibernation) {
       await chrome.alarms.create(HIBERNATION_ALARM, { periodInMinutes: 10 });
     } else {
       await chrome.alarms.clear(HIBERNATION_ALARM);
     }
   } catch (e) {
-    // console.debug("MCK: syncAlarms failed", e);
+    // console.debug("BM: syncAlarms failed", e);
   }
 }
 
@@ -170,12 +175,12 @@ async function discardInactiveTabs(thresholdMinutes) {
         try {
           await chrome.tabs.discard(tab.id);
         } catch (inner) {
-          // console.debug("MCK: discard failed for tab", tab.id, inner);
+          // console.debug("BM: discard failed for tab", tab.id, inner);
         }
       }
     }
   } catch (e) {
-    // console.debug("MCK: discardInactiveTabs failed", e);
+    // console.debug("BM: discardInactiveTabs failed", e);
   }
 }
 
@@ -211,12 +216,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabLastActive[tabId];
 });
 
-// Alarm handler for Memory Saver / Hibernation sweeps.
+// Alarm handler for Tab Hibernation sweeps.
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   const settings = await getSettings();
-  if (alarm.name === MEMORY_SAVER_ALARM && settings.memorySaver) {
-    await discardInactiveTabs(MEMORY_SAVER_MINUTES);
-  } else if (alarm.name === HIBERNATION_ALARM && settings.tabHibernation) {
+  if (alarm.name === HIBERNATION_ALARM && settings.tabHibernation) {
     await discardInactiveTabs(HIBERNATION_MINUTES);
   }
 });
@@ -233,6 +236,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const ok = await clearCache();
           const { lastCleared } = await chrome.storage.local.get("lastCleared");
           sendResponse({ ok, lastCleared });
+          break;
+        }
+        case "CLEAR_COOKIES": {
+          const ok = await clearCookies();
+          sendResponse({ ok });
           break;
         }
         case "SYNC_ALARMS": {

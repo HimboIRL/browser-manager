@@ -1,22 +1,21 @@
 /**
- * MCK Browser Manager - Popup controller
+ * Browser Manager - Popup controller
  * -----------------------------------------------------------------
  * - Restores UI state from chrome.storage.local and the live chrome.privacy /
  *   chrome.contentSettings values on open.
  * - Persists and applies each change immediately.
  * - Handles the Clear Cache action with loading + success states.
  *
- * Managed by McKinney IT Help Desk.
+ * Managed by IT Help Desk.
  */
 
 /* ------------------------------------------------------------------ *
  * Defaults (kept in sync with background.js)
  * ------------------------------------------------------------------ */
 const DEFAULT_SETTINGS = {
-  clearOnStartup: true,
-  memorySaver: false,
+  clearOnStartup: false,
   tabHibernation: false,
-  preloadPages: true,
+  preloadPages: false,
   doNotTrack: false,
   blockThirdPartyCookies: false,
   webRTCProtection: false,
@@ -65,7 +64,7 @@ async function saveSetting(key, value) {
   try {
     await chrome.storage.local.set({ [key]: value });
   } catch (e) {
-    // console.debug("MCK popup: saveSetting failed", e);
+    // console.debug("BM popup: saveSetting failed", e);
   }
 }
 
@@ -180,19 +179,30 @@ function promptAdmin() {
 }
 
 /* ------------------------------------------------------------------ *
- * Advanced Settings reveal (cog icon in footer)
- * Keeps the popup clean by default: only the Cache view shows until the
- * user clicks the cog to reveal Performance / Privacy / Settings tabs.
+ * Admin Settings reveal (cog icon in header)
+ * Keeps the popup clean by default: only the Cache view shows. Clicking
+ * the cog prompts for the administrator password; only on success are the
+ * Performance / Privacy / Settings tabs revealed.
  * ------------------------------------------------------------------ */
 function initAdvanced() {
   const cog = $("advancedCog");
   const tabBar = $("tabBar");
   if (!cog || !tabBar) return;
 
-  cog.addEventListener("click", () => {
+  cog.addEventListener("click", async () => {
+    // If already unlocked this session, just jump back to the tabs.
+    if (!tabBar.classList.contains("is-hidden")) {
+      const perfTab = document.querySelector('.tab[data-tab="performance"]');
+      if (perfTab) perfTab.click();
+      return;
+    }
+
+    const ok = await promptAdmin();
+    if (!ok) return;
+
     tabBar.classList.remove("is-hidden");
 
-    // Jump straight to the first advanced tab (Performance).
+    // Jump straight to the first admin tab (Performance).
     const perfTab = document.querySelector('.tab[data-tab="performance"]');
     if (perfTab) perfTab.click();
   });
@@ -238,6 +248,78 @@ function initClearCache() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Clear Cookies quick action (dropdown next to Clear Cache)
+ * ------------------------------------------------------------------ */
+function initClearCookies() {
+  const toggle = $("clearMenuToggle");
+  const menu = $("clearMenu");
+  const cookiesBtn = $("clearCookiesBtn");
+  const success = $("clearSuccess");
+  if (!toggle || !menu || !cookiesBtn) return;
+
+  function closeMenu() {
+    menu.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+  }
+
+  function openMenu() {
+    menu.hidden = false;
+    toggle.setAttribute("aria-expanded", "true");
+  }
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menu.hidden) openMenu();
+    else closeMenu();
+  });
+
+  // Close the menu when clicking anywhere else.
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && e.target !== toggle) {
+      closeMenu();
+    }
+  });
+
+  cookiesBtn.addEventListener("click", async () => {
+    closeMenu();
+
+    const [response] = await Promise.all([
+      sendMessage({ type: "CLEAR_COOKIES" }),
+      new Promise((r) => setTimeout(r, 300))
+    ]);
+
+    const label = success.querySelector("span:last-child");
+    if (response && response.ok) {
+      label.textContent = "Cookies cleared successfully";
+    } else {
+      label.textContent = "Could not clear cookies. Contact IT Help Desk.";
+    }
+    success.hidden = false;
+    setTimeout(() => {
+      success.hidden = true;
+      label.textContent = "Cache cleared successfully";
+    }, 2500);
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Memory Saver: opens Chrome's built-in performance settings page.
+ * (Chrome's built-in Memory Saver cannot be toggled via an extension API,
+ * so we deep-link the user straight to the setting.)
+ * ------------------------------------------------------------------ */
+function initMemorySaver() {
+  const btn = $("openMemorySaver");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    try {
+      chrome.tabs.create({ url: "chrome://settings/performance" });
+    } catch (e) {
+      /* no-op */
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ *
  * Toggle wiring
  * Each toggle: (1) restores state, (2) on change saves + applies.
  * ------------------------------------------------------------------ */
@@ -253,8 +335,7 @@ async function initToggles() {
   const stored = await getStored();
 
   /* ---- Performance ---- */
-  // Memory Saver & Tab Hibernation live only in storage (driven by alarms).
-  setChecked("memorySaver", stored.memorySaver);
+  // Tab Hibernation lives only in storage (driven by an alarm).
   setChecked("tabHibernation", stored.tabHibernation);
 
   // Preload Pages reflects live Chrome pref when available.
@@ -291,11 +372,6 @@ async function initToggles() {
   setChecked("clearOnStartup", stored.clearOnStartup);
 
   /* ---- Bindings ---- */
-  bindToggle("memorySaver", async (v) => {
-    await saveSetting("memorySaver", v);
-    await sendMessage({ type: "SYNC_ALARMS" });
-  });
-
   bindToggle("tabHibernation", async (v) => {
     await saveSetting("tabHibernation", v);
     await sendMessage({ type: "SYNC_ALARMS" });
@@ -325,31 +401,11 @@ async function initToggles() {
     );
   });
 
-  // Auto-clear on startup is password protected. We use the "change" event
-  // (same reliable pattern as every other toggle) instead of intercepting
-  // clicks, which avoids the label/checkbox double-fire that could leave the
-  // toggle out of sync with the entered password. A re-entrancy guard stops
-  // the prompt from opening twice, and reverting via `.checked = ...` does
-  // NOT re-fire "change", so there is no feedback loop.
-  const startupEl = $("clearOnStartup");
-  if (startupEl) {
-    let gateBusy = false;
-    startupEl.addEventListener("change", async () => {
-      if (gateBusy) return;
-      const desired = startupEl.checked; // state the user just switched to
-      const previous = !desired;
-
-      gateBusy = true;
-      const ok = await promptAdmin();
-      gateBusy = false;
-
-      if (ok) {
-        await saveSetting("clearOnStartup", desired);
-      } else {
-        startupEl.checked = previous; // revert; does not re-trigger change
-      }
-    });
-  }
+  // Auto-clear on startup is a plain toggle (this whole Settings tab is
+  // already behind the admin-password gate on the cog).
+  bindToggle("clearOnStartup", async (v) => {
+    await saveSetting("clearOnStartup", v);
+  });
 }
 
 function setChecked(id, value) {
@@ -405,6 +461,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   initTabs();
   initAdvanced();
   initClearCache();
+  initClearCookies();
+  initMemorySaver();
   initFooter();
   await initLastCleared();
   await initToggles();

@@ -1,6 +1,6 @@
-# MCK Browser Manager - Google Admin Deployment Guide
+# Browser Manager - Google Admin Deployment Guide
 
-This guide walks you through deploying the **MCK Browser Manager** extension to all users in your organization via Google Workspace Admin Console.
+This guide walks you through deploying the **Browser Manager** extension to all users in your organization via Google Workspace Admin Console.
 
 ---
 
@@ -65,11 +65,11 @@ Host the `.crx` file on your own server and configure Admin Console to install f
 3. Fill in the required listing information:
 
    **Store Listing Tab:**
-   - **Name:** MCK Browser Manager
-   - **Summary:** Enterprise browser management for McKinney — one-click cache clearing, performance tuning, and privacy controls.
+   - **Name:** Browser Manager
+   - **Summary:** Enterprise browser management for your organization — one-click cache clearing, performance tuning, and privacy controls.
    - **Description:** 
      ```
-     MCK Browser Manager is an enterprise Chrome extension for McKinney employees, 
+     Browser Manager is an enterprise Chrome extension for employees, 
      providing centralized browser management tools.
 
      Features:
@@ -77,7 +77,7 @@ Host the `.crx` file on your own server and configure Admin Console to install f
      • Auto-clear cache on Chrome startup (IT-managed)
      • Performance controls: Memory Saver, Tab Hibernation, Preload Pages
      • Privacy settings: Do Not Track, 3rd Party Cookie blocking, WebRTC protection
-     • Centrally managed by McKinney IT Help Desk
+     • Centrally managed by IT Help Desk
 
      This extension is designed for internal use and managed via Google Admin Console.
      ```
@@ -154,7 +154,7 @@ Once your extension is live in the Chrome Web Store:
   2. Or visit `chrome://policy` → Click **"Reload policies"**
 
 - The extension will automatically install on all managed Chrome browsers within your selected OU
-- Users will see "MCK Browser Manager" in their toolbar (if pinned) or extensions list
+- Users will see "Browser Manager" in their toolbar (if pinned) or extensions list
 
 ---
 
@@ -277,7 +277,7 @@ If you don't want to publish to Chrome Web Store:
 
 1. **Restrict Admin Console access** to IT staff only
 2. **Review extension updates** before deploying (if self-hosting)
-3. **Monitor user feedback** via IT Help Desk link (`servicedesk.mckinney.com`)
+3. **Monitor user feedback** via IT Help Desk link (`support.example.com`)
 4. **Use "Force install"** to prevent users from disabling/removing the extension
 5. **Change the admin password** periodically (update in both `popup.js` and `options.js`, re-deploy)
 
@@ -285,7 +285,7 @@ If you don't want to publish to Chrome Web Store:
 
 ## Support & Maintenance
 
-- **IT Help Desk:** [https://servicedesk.mckinney.com/support/home](https://servicedesk.mckinney.com/support/home)
+- **IT Help Desk:** [https://support.example.com](https://support.example.com)
 - **Extension version:** Displayed in footer of popup and options page
 - **Chrome version compatibility:** Manifest V3 requires Chrome 88+ (2021), all modern Chrome browsers supported
 

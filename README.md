@@ -1,8 +1,8 @@
-# MCK Browser Manager
+# Browser Manager
 
-An enterprise Chrome extension (Manifest V3) for **McKinney**, providing one-click cache clearing plus centrally managed performance and privacy controls.
+An enterprise Chrome extension (Manifest V3) for enterprises, providing one-click cache clearing plus centrally managed performance and privacy controls.
 
-> Managed by [IT Help Desk](https://servicedesk.mckinney.com/support/home).
+> Managed by [IT Help Desk](https://support.example.com).
 
 ## Features
 
@@ -19,12 +19,12 @@ mck-browser-manager/
 ├── manifest.json        # MV3 manifest
 ├── background.js        # Service worker (startup logic, alarms, cache)
 ├── popup.html           # 4-tab popup UI
-├── popup.css            # McKinney-branded styles
+├── popup.css            # Custom styles
 ├── popup.js             # Popup logic (load/save/apply settings)
 ├── options.html         # Standalone settings page
 ├── options.js           # Options page logic
 ├── assets/
-│   └── logo.png         # McKinney wordmark
+│   └── logo.png         # App logo
 └── icons/               # 16/32/48/128 px extension icons
 ```
 

@@ -1,10 +1,10 @@
 #!/bin/bash
-# MCK Browser Manager - Deployment Package Script
+# Browser Manager - Deployment Package Script
 # Creates a .zip file ready for Chrome Web Store upload
 
 set -e
 
-echo "🔧 MCK Browser Manager - Creating deployment package..."
+echo "🔧 Browser Manager - Creating deployment package..."
 
 # Check if we're in the right directory
 if [ ! -f "manifest.json" ]; then
