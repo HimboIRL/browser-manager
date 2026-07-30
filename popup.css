@@ -1,17 +1,17 @@
 /* =====================================================================
    Browser Manager - Popup styles
-   Color palette:
-     --bm-orange   #E84B0C   (primary action)
-     --bm-maroon   #7A1515   (accent)
-     --bm-charcoal #2D2D2D   (text)
-     --bm-white    #FFFFFF
-     --bm-gray     #F5F5F5   (surfaces)
+   Neutral palette:
+     --bm-primary   #4B6584   (primary action, slate blue-gray)
+     --bm-accent    #2D3E50   (accent, dark slate)
+     --bm-charcoal  #2D2D2D   (text)
+     --bm-white     #FFFFFF
+     --bm-gray      #F5F5F5   (surfaces)
    ===================================================================== */
 
 :root {
-  --bm-orange: #e84b0c;
-  --bm-orange-dark: #c73e09;
-  --bm-maroon: #7a1515;
+  --bm-primary: #4b6584;
+  --bm-primary-dark: #3a4e63;
+  --bm-accent: #2d3e50;
   --bm-charcoal: #2d2d2d;
   --bm-white: #ffffff;
   --bm-gray: #f5f5f5;
@@ -81,7 +81,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: var(--bm-orange);
+  color: var(--bm-primary);
 }
 
 /* ===================== Tabs ===================== */
@@ -128,11 +128,11 @@ body {
 }
 
 .tab.is-active {
-  color: var(--bm-orange);
+  color: var(--bm-primary);
 }
 
 .tab.is-active::after {
-  background: var(--bm-orange);
+  background: var(--bm-primary);
 }
 
 /* ===================== Panels ===================== */
@@ -181,7 +181,7 @@ body {
   padding: 14px 32px;
   border: none;
   border-radius: var(--bm-radius);
-  background: var(--bm-orange);
+  background: var(--bm-primary);
   color: var(--bm-white);
   font-size: 14px;
   font-weight: 700;
@@ -191,7 +191,7 @@ body {
 }
 
 .btn-clear:hover {
-  background: var(--bm-orange-dark);
+  background: var(--bm-primary-dark);
 }
 
 .btn-clear:active {
@@ -215,7 +215,7 @@ body {
 /* Loading state: hide icon + label, show spinner */
 .btn-clear.is-loading {
   pointer-events: none;
-  background: var(--bm-orange-dark);
+  background: var(--bm-primary-dark);
 }
 .btn-clear.is-loading .btn-clear__icon,
 .btn-clear.is-loading .btn-clear__label {
@@ -252,7 +252,7 @@ body {
   appearance: none;
   border: none;
   cursor: pointer;
-  background: var(--bm-orange);
+  background: var(--bm-primary);
   color: var(--bm-white);
   border-radius: var(--bm-radius);
   padding: 0 10px;
@@ -264,7 +264,7 @@ body {
 }
 
 .btn-caret:hover {
-  background: var(--bm-orange-dark);
+  background: var(--bm-primary-dark);
 }
 
 .btn-caret svg {
@@ -316,7 +316,7 @@ body {
 }
 
 .clear-menu__item svg {
-  color: var(--bm-orange);
+  color: var(--bm-primary);
   flex: 0 0 auto;
 }
 
@@ -324,9 +324,9 @@ body {
 .btn-open {
   flex: 0 0 auto;
   appearance: none;
-  border: 1px solid var(--bm-orange);
+  border: 1px solid var(--bm-primary);
   background: var(--bm-white);
-  color: var(--bm-orange);
+  color: var(--bm-primary);
   font-size: 12px;
   font-weight: 700;
   padding: 7px 16px;
@@ -337,7 +337,7 @@ body {
 }
 
 .btn-open:hover {
-  background: var(--bm-orange);
+  background: var(--bm-primary);
   color: var(--bm-white);
 }
 
@@ -392,7 +392,7 @@ body {
 
 .cache-help__icon {
   flex-shrink: 0;
-  color: var(--bm-orange);
+  color: var(--bm-primary);
   margin-top: 1px;
 }
 
@@ -476,7 +476,7 @@ body {
 }
 
 .switch input:checked + .switch__slider {
-  background: var(--bm-orange);
+  background: var(--bm-primary);
 }
 
 .switch input:checked + .switch__slider::before {
@@ -484,7 +484,7 @@ body {
 }
 
 .switch input:focus-visible + .switch__slider {
-  box-shadow: 0 0 0 3px rgba(232, 75, 12, 0.3);
+  box-shadow: 0 0 0 3px rgba(75, 101, 132, 0.3);
 }
 
 /* ===================== Managed note ===================== */
@@ -504,7 +504,7 @@ body {
 .managed-note__icon {
   flex: 0 0 auto;
   display: inline-flex;
-  color: var(--bm-maroon);
+  color: var(--bm-accent);
   margin-top: 1px;
 }
 
@@ -522,7 +522,7 @@ body {
 }
 
 .footer__managed a {
-  color: var(--bm-orange);
+  color: var(--bm-primary);
   font-weight: 700;
   text-decoration: none;
 }
@@ -553,8 +553,8 @@ body {
 }
 
 .cog-icon:hover {
-  color: var(--bm-orange);
-  background: rgba(232, 75, 12, 0.08);
+  color: var(--bm-primary);
+  background: rgba(75, 101, 132, 0.08);
 }
 
 .cog-icon svg {
@@ -616,8 +616,8 @@ body {
   height: 48px;
   margin-bottom: 10px;
   border-radius: 50%;
-  background: rgba(232, 75, 12, 0.1);
-  color: var(--bm-orange);
+  background: rgba(75, 101, 132, 0.1);
+  color: var(--bm-primary);
 }
 
 .modal__title {
@@ -646,8 +646,8 @@ body {
 }
 
 .modal__input:focus {
-  border-color: var(--bm-orange);
-  box-shadow: 0 0 0 3px rgba(232, 75, 12, 0.15);
+  border-color: var(--bm-primary);
+  box-shadow: 0 0 0 3px rgba(75, 101, 132, 0.15);
 }
 
 .modal__input.is-error {
@@ -692,10 +692,10 @@ body {
 }
 
 .modal__btn--primary {
-  background: var(--bm-orange);
+  background: var(--bm-primary);
   color: var(--bm-white);
 }
 
 .modal__btn--primary:hover {
-  background: var(--bm-orange-dark);
+  background: var(--bm-primary-dark);
 }

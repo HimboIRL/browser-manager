@@ -1,314 +1,160 @@
-# Browser Manager - Google Admin Deployment Guide
+# Browser Manager — Deployment Guide
 
-This guide walks you through deploying the **Browser Manager** extension to all users in your organization via Google Workspace Admin Console.
+This guide explains how to install and deploy the **Browser Manager** Chrome
+extension — locally for testing, via the Chrome Web Store, or across an
+organization with the Google Admin Console.
 
 ---
 
 ## Prerequisites
 
-✅ **Google Workspace admin access** with permissions to manage Chrome apps & extensions  
-✅ **Chrome Web Store Developer account** ($5 one-time registration fee)  
-✅ **Extension ready to deploy** (this repo contains the complete, tested extension)
+- **Chrome 110+** (the extension targets Manifest V3).
+- For Web Store publishing: a **Chrome Web Store developer account**
+  ($5 one-time registration fee).
+- For managed rollout: **Google Workspace admin access** with permission to
+  manage Chrome apps & extensions.
 
 ---
 
-## Deployment Options
+## 1. Configure the admin password
 
-You have **two deployment paths**:
+The advanced settings (Performance / Privacy / Settings tabs) are protected by
+a simple password gate. Before packaging, set your own password:
 
-### Option A: Chrome Web Store (Recommended)
-Upload to Chrome Web Store as **unlisted** (only users with the link can find it) or **private** (only your domain can install it). Google Admin can then force-install it by extension ID.
+- `popup.js` — `const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";`
+- `options.js` — `const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";`
 
-**Pros:** Easiest to manage, automatic updates, Google-hosted  
-**Cons:** Requires Chrome Web Store developer account, $5 fee, review process (usually 1-3 days)
-
-### Option B: Self-Hosted (Advanced)
-Host the `.crx` file on your own server and configure Admin Console to install from your URL.
-
-**Pros:** No Chrome Web Store account needed, full control  
-**Cons:** More complex, you manage updates manually, requires HTTPS hosting
+> **Note:** A client-side extension cannot truly hide a secret — a determined
+> user can read this value in the source. The gate is a deterrent against
+> casual/accidental changes, not a security boundary. For hard enforcement,
+> use Chrome Enterprise policies via the Admin Console.
 
 ---
 
-## **Option A: Chrome Web Store Deployment** (Step-by-Step)
+## 2. Load locally for testing (unpacked)
 
-### Step 1: Package the Extension
+1. Open `chrome://extensions` in Chrome.
+2. Enable **Developer mode** (top-right toggle).
+3. Click **Load unpacked** and select this project folder.
+4. The extension appears in your toolbar. Pin it for quick access.
 
-1. **Set your admin password** (if you haven't already):
-   - Edit `popup.js` line 32: `const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";`
-   - Edit `options.js` line 13: `const ADMIN_PASSWORD = "YOUR_PASSWORD_HERE";`
+This is the fastest way to try changes — no packaging or signing required.
 
-2. **Create a `.zip` file** of the extension:
-   ```bash
-   # From your project directory
-   zip -r mck-browser-manager.zip * -x "*.git*" "*.DS_Store" "node_modules/*"
-   ```
-   
-   Or manually:
-   - Select all files in `/mck-browser-manager/` folder
-   - Right-click → **Compress** (Mac) or **Send to → Compressed folder** (Windows)
-   - Name it `mck-browser-manager.zip`
+---
 
-   ⚠️ **Important:** Zip the **contents** of the folder, not the folder itself. When you unzip, you should see `manifest.json` at the root, not `mck-browser-manager/manifest.json`.
+## 3. Package the extension
 
-### Step 2: Chrome Web Store Developer Registration
+Create a `.zip` of the extension's **contents** (not the parent folder):
 
-1. Go to [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)
-2. Sign in with your Google Workspace admin account (or a dedicated developer account)
-3. **Pay the $5 one-time registration fee** (if not already registered)
-4. Agree to the Developer Agreement
+```bash
+# From the project directory
+zip -r browser-manager.zip \
+  manifest.json background.js \
+  popup.html popup.css popup.js \
+  options.html options.js \
+  assets/ icons/ \
+  -x "*.DS_Store" "*/.git/*"
+```
 
-### Step 3: Upload Your Extension
+> When you unzip the archive, `manifest.json` must sit at the root — not inside
+> a nested folder.
 
-1. Click **"New Item"** in the Developer Dashboard
-2. **Upload** your `mck-browser-manager.zip` file
-3. Fill in the required listing information:
+A helper script, `package-for-deployment.sh`, is included and produces the same
+archive automatically.
 
-   **Store Listing Tab:**
+---
+
+## 4. Publish to the Chrome Web Store (recommended)
+
+1. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+2. Sign in and pay the one-time $5 registration fee if you haven't already.
+3. Click **New Item** and upload `browser-manager.zip`.
+4. Fill in the store listing:
    - **Name:** Browser Manager
-   - **Summary:** Enterprise browser management for your organization — one-click cache clearing, performance tuning, and privacy controls.
-   - **Description:** 
-     ```
-     Browser Manager is an enterprise Chrome extension for employees, 
-     providing centralized browser management tools.
-
-     Features:
-     • One-click cache clearing with visual feedback
-     • Auto-clear cache on Chrome startup (IT-managed)
-     • Performance controls: Memory Saver, Tab Hibernation, Preload Pages
-     • Privacy settings: Do Not Track, 3rd Party Cookie blocking, WebRTC protection
-     • Centrally managed by IT Help Desk
-
-     This extension is designed for internal use and managed via Google Admin Console.
-     ```
+   - **Summary:** One-click cache clearing plus performance and privacy controls.
    - **Category:** Productivity
-   - **Language:** English (United States)
-
-   **Upload screenshots** (recommended):
-   - Take 2-3 screenshots of the extension popup (Cache tab, Privacy tab, etc.)
-   - Chrome Web Store requires at least 1 screenshot (1280x800 or 640x400)
-
-   **Privacy Tab:**
-   - **Single Purpose:** Browser management and performance optimization for enterprise users
-   - **Permission Justification:** Explain each permission:
-     - `browsingData`: Required to clear cache
-     - `storage`: Persist user settings
-     - `tabs`: Memory Saver and Tab Hibernation features
-     - `privacy`: Apply Do Not Track and WebRTC settings
-     - `contentSettings`: Block 3rd party cookies
-     - `alarms`: Schedule automated tab management
-
-   **Visibility:**
-   - Select **"Unlisted"** (users with the link can install, but it won't appear in search)
-   - OR **"Private"** (only your Google Workspace domain can install) — requires domain verification
-
-4. Click **"Submit for Review"**
-
-### Step 4: Wait for Approval
-
-- **Review time:** Usually 1-3 business days (sometimes as fast as a few hours)
-- You'll receive an email when the extension is approved
-- Once approved, note the **Extension ID** (looks like: `abcdefghijklmnopqrstuvwxyz123456`)
-
-### Step 5: Deploy via Google Admin Console
-
-Once your extension is live in the Chrome Web Store:
-
-1. **Sign in to Google Admin Console**  
-   Go to [admin.google.com](https://admin.google.com)
-
-2. **Navigate to Chrome Management**  
-   `Devices` → `Chrome` → `Apps & extensions`
-
-3. **Add the Extension**  
-   - Click **"Add Chrome app or extension"** (yellow ➕ button)
-   - Paste your **Extension ID** from the Chrome Web Store
-   - Click **"Select"**
-
-4. **Configure Installation Policy**  
-   - **Who:** Select the organizational unit (OU) to deploy to:
-     - Select **"All users"** for company-wide deployment
-     - Or choose specific departments/groups
-   
-   - **Installation Policy:** Choose **"Force install"**
-     - This automatically installs the extension for all users in the selected OU
-     - Users **cannot** uninstall it (true enterprise policy enforcement)
-   
-   - **Installation URL:** Auto-filled (Chrome Web Store URL)
-
-5. **Pin to Toolbar (Optional but Recommended)**  
-   - Under "User Experience" settings:
-     - Set **"Toolbar pin"** to **"Force pinned"**
-     - This ensures the extension icon is always visible in the Chrome toolbar
-
-6. **Configure Settings (Optional)**  
-   You can also pre-configure settings via Admin Console policies, but since your extension uses `chrome.storage.local`, users will have the default settings defined in `background.js`.
-
-7. **Click "Save"**
-
-### Step 6: Rollout
-
-- **Propagation time:** Changes can take up to 24 hours to apply to all devices
-- **For faster testing:** Have a user:
-  1. Close and reopen Chrome
-  2. Or visit `chrome://policy` → Click **"Reload policies"**
-
-- The extension will automatically install on all managed Chrome browsers within your selected OU
-- Users will see "Browser Manager" in their toolbar (if pinned) or extensions list
+   - **Screenshots:** at least one (1280×800 or 640×400).
+5. Under **Privacy**, justify each permission:
+   - `browsingData` — clear cache and cookies
+   - `storage` — persist settings
+   - `tabs` — Tab Hibernation and quick actions
+   - `privacy` — Do Not Track and WebRTC settings
+   - `contentSettings` — block third-party cookies
+   - `alarms` — schedule automated tab management
+6. Choose a **visibility** level:
+   - **Unlisted** — installable only via a direct link (not searchable).
+   - **Private** — restricted to a specific Google Workspace domain.
+   - **Public** — listed publicly (only if you intend a general release).
+7. Click **Submit for Review**. Review usually takes 1–3 business days. Once
+   approved, note the **Extension ID**.
 
 ---
 
-## **Option B: Self-Hosted Deployment** (Advanced)
+## 5. Managed rollout via Google Admin Console (optional)
 
-If you don't want to publish to Chrome Web Store:
+Once the item is live in the Web Store:
 
-### Step 1: Package and Sign the Extension
+1. Sign in to [admin.google.com](https://admin.google.com).
+2. Go to **Devices → Chrome → Apps & extensions**.
+3. Click **Add Chrome app or extension**, paste the **Extension ID**, and select it.
+4. Choose the target **organizational unit** (all users or specific groups).
+5. Set the **installation policy**:
+   - **Force install** — installs automatically; users cannot remove it.
+   - **Allow install** — users may add it themselves.
+6. (Optional) Set **Toolbar pin → Force pinned** so the icon is always visible.
+7. Click **Save**. Policy changes can take up to 24 hours to propagate; users can
+   speed this up via `chrome://policy` → **Reload policies**.
 
-1. **Create a `.crx` package** (Chrome Extension Package):
-   ```bash
-   # Chrome requires extensions to be signed
-   # Use chrome://extensions/ → Pack extension
-   # Or use command line (requires Chrome binary)
-   ```
+---
 
-2. **Host the `.crx` and `update.xml` files** on an HTTPS server:
-   - Upload `mck-browser-manager.crx` to your web server
-   - Create an `update.xml` manifest (example below)
+## 6. Self-hosted deployment (advanced)
 
-   **update.xml:**
+If you prefer not to use the Web Store:
+
+1. Pack a signed `.crx` via `chrome://extensions` → **Pack extension**.
+2. Host the `.crx` and an `update.xml` manifest on an HTTPS server:
+
    ```xml
    <?xml version='1.0' encoding='UTF-8'?>
    <gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>
      <app appid='YOUR_EXTENSION_ID'>
-       <updatecheck codebase='https://your-domain.com/mck-browser-manager.crx' version='1.0.0' />
+       <updatecheck codebase='https://your-host.example/browser-manager.crx' version='1.0.0' />
      </app>
    </gupdate>
    ```
 
-### Step 2: Deploy via Admin Console
+3. In the Admin Console, add a **custom app** using the update URL and set the
+   installation policy to **Force install**.
 
-1. In Google Admin Console:  
-   `Devices` → `Chrome` → `Apps & extensions` → `Add Chrome app or extension`
-
-2. **Choose "Add custom app"**
-
-3. Enter:
-   - **Extension ID:** (from your `.pem` file or generated during packing)
-   - **Update URL:** `https://your-domain.com/update.xml`
-
-4. Set **Installation Policy** to **"Force install"**
-
-5. Click **"Save"**
-
-⚠️ **Self-hosting drawbacks:**
-- More complex initial setup
-- You must manually update `update.xml` and `.crx` for every new version
-- No automatic security/malware scanning by Google
+Trade-offs: no Web Store account needed, but you manage updates and hosting
+yourself, and Google does not scan the package.
 
 ---
 
-## Updating the Extension
+## 7. Updating
 
-### If using Chrome Web Store:
-1. Make your code changes locally
-2. Increment the `version` in `manifest.json` (e.g., `1.0.0` → `1.0.1`)
-3. Re-zip the extension
-4. Upload to Chrome Web Store Developer Dashboard (same listing, click "Package" tab → "Upload new package")
-5. Submit for review
-6. Once approved, updates **automatically roll out** to all installed instances (within 24-48 hours)
-
-### If self-hosting:
-1. Update your code
-2. Increment `version` in `manifest.json`
-3. Re-create the `.crx` file
-4. Update `update.xml` with the new version number and `.crx` URL
-5. Upload both files to your server
-6. Chrome checks for updates periodically (every few hours)
-
----
-
-## Testing the Deployment
-
-### Before full rollout:
-1. **Create a test OU** in Google Admin:
-   - `Admin Console` → `Directory` → `Organizational units` → **Create test OU**
-   - Add 1-2 test users to this OU
-   - Deploy the extension to this OU first with "Force install"
-
-2. **Test user workflow:**
-   - Sign in to Chrome as a test user
-   - Verify the extension auto-installs
-   - Check all features:
-     - Cache clearing works
-     - Admin password gate works (try toggling "Auto-clear on startup")
-     - Advanced Settings cog reveals tabs
-     - Privacy/Performance toggles apply correctly
-
-3. **Once validated:**
-   - Expand deployment to **All users** or your main OUs
+1. Make your changes and bump `version` in `manifest.json` (e.g. `1.0.0 → 1.0.1`).
+2. Re-package the `.zip` (or rebuild the `.crx`).
+3. **Web Store:** upload the new package to the same listing and submit for
+   review — updates roll out automatically once approved.
+   **Self-hosted:** update `update.xml` with the new version and `.crx` URL;
+   Chrome checks periodically and updates on its own.
 
 ---
 
 ## Troubleshooting
 
-### Extension not installing for users?
-- Check the OU selection in Admin Console (ensure the user is in the target OU)
-- Verify "Force install" is selected (not "Allow install")
-- Ask users to visit `chrome://policy` → **Reload policies** → check "ExtensionInstallForcelist"
-- Check Chrome Management enrollment: `chrome://management/` should show "Your browser is managed by [your-domain]"
-
-### Users can uninstall the extension?
-- Ensure you selected **"Force install"** (not "Allow install") in Admin Console
-- Force install prevents uninstallation by users
-
-### Settings not persisting?
-- The extension uses `chrome.storage.local` which is tied to the Chrome profile
-- If users are using temporary/guest profiles, settings won't persist
-- Ensure users are signed in to their Workspace account in Chrome
-
-### Admin password visible in source code?
-- **This is intentional and expected for client-side extensions** — the password is a deterrent, not a security boundary
-- For true enforcement, use Chrome Enterprise Policies (can lock settings via Admin Console)
-- The current password gate is sufficient for preventing **accidental** changes by non-technical users
+| Problem | Fix |
+|---------|-----|
+| Extension not installing (managed) | Confirm the user is in the target OU and the policy is **Force install**; reload policies at `chrome://policy`. |
+| Users can remove the extension | Use **Force install** rather than **Allow install**. |
+| Settings not persisting | Settings use `chrome.storage.local`, tied to the Chrome profile. Guest/temporary profiles won't retain them. |
+| Admin password visible in source | Expected for client-side extensions. Use Chrome Enterprise policies for hard enforcement. |
 
 ---
 
-## Security Best Practices
+## Additional resources
 
-1. **Restrict Admin Console access** to IT staff only
-2. **Review extension updates** before deploying (if self-hosting)
-3. **Monitor user feedback** via IT Help Desk link (`support.example.com`)
-4. **Use "Force install"** to prevent users from disabling/removing the extension
-5. **Change the admin password** periodically (update in both `popup.js` and `options.js`, re-deploy)
-
----
-
-## Support & Maintenance
-
-- **IT Help Desk:** [https://support.example.com](https://support.example.com)
-- **Extension version:** Displayed in footer of popup and options page
-- **Chrome version compatibility:** Manifest V3 requires Chrome 88+ (2021), all modern Chrome browsers supported
-
----
-
-## Quick Reference
-
-| Task | Google Admin Console Path |
-|------|--------------------------|
-| Deploy extension | `Devices` → `Chrome` → `Apps & extensions` → `Add app` |
-| Pin to toolbar | Extension settings → `Toolbar pin` → `Force pinned` |
-| View installed extensions | `Devices` → `Chrome` → `Apps & extensions` |
-| Check user devices | `Devices` → `Chrome` → `Devices` |
-| Force policy update | User visits `chrome://policy` → `Reload policies` |
-
----
-
-## Additional Resources
-
-- [Chrome Enterprise Policy List](https://chromeenterprise.google/policies/)
-- [Chrome Web Store Developer Documentation](https://developer.chrome.com/docs/webstore/)
-- [Google Workspace Admin Help: Manage Chrome Apps](https://support.google.com/chrome/a/answer/2657289)
-
----
-
-**Questions?** Contact your IT Help Desk or the extension developer.
+- [Chrome Web Store developer docs](https://developer.chrome.com/docs/webstore/)
+- [Chrome Enterprise policy list](https://chromeenterprise.google/policies/)
+- [Manage Chrome apps (Google Workspace admin)](https://support.google.com/chrome/a/answer/2657289)
