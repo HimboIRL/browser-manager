@@ -9,3 +9,6 @@ Thumbs.db
 *.zip
 *.crx
 *.pem
+
+# Internal tooling metadata (do not publish)
+.abacus.donotdelete
