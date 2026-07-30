@@ -4,7 +4,7 @@
  * Managed by IT Help Desk.
  */
 
-const DEFAULT_CLEAR_ON_STARTUP = false;
+const DEFAULT_CLEAR_ON_STARTUP = true;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const toggle = document.getElementById("clearOnStartup");

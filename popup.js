@@ -13,9 +13,8 @@
  * Defaults (kept in sync with background.js)
  * ------------------------------------------------------------------ */
 const DEFAULT_SETTINGS = {
-  clearOnStartup: false,
+  clearOnStartup: true,
   tabHibernation: false,
-  preloadPages: false,
   doNotTrack: false,
   blockThirdPartyCookies: false,
   webRTCProtection: false,
@@ -338,15 +337,6 @@ async function initToggles() {
   // Tab Hibernation lives only in storage (driven by an alarm).
   setChecked("tabHibernation", stored.tabHibernation);
 
-  // Preload Pages reflects live Chrome pref when available.
-  const livePreload = await getPref(
-    chrome.privacy.websites.networkPredictionEnabled
-  );
-  setChecked(
-    "preloadPages",
-    livePreload === null ? stored.preloadPages : livePreload
-  );
-
   /* ---- Privacy ---- */
   const liveDnt = await getPref(chrome.privacy.websites.doNotTrackEnabled);
   setChecked("doNotTrack", liveDnt === null ? stored.doNotTrack : liveDnt);
@@ -375,11 +365,6 @@ async function initToggles() {
   bindToggle("tabHibernation", async (v) => {
     await saveSetting("tabHibernation", v);
     await sendMessage({ type: "SYNC_ALARMS" });
-  });
-
-  bindToggle("preloadPages", async (v) => {
-    await saveSetting("preloadPages", v);
-    await setPref(chrome.privacy.websites.networkPredictionEnabled, v);
   });
 
   bindToggle("doNotTrack", async (v) => {

@@ -14,9 +14,8 @@
  * Default settings (everything OFF by default).
  * ------------------------------------------------------------------ */
 const DEFAULT_SETTINGS = {
-  clearOnStartup: false, // Auto-clear cache on Chrome startup.
+  clearOnStartup: true, // Auto-clear cache on Chrome startup.
   tabHibernation: false, // Discard tabs inactive > HIBERNATION_MINUTES.
-  preloadPages: false, // chrome.privacy.websites.networkPredictionEnabled.
   doNotTrack: false, // chrome.privacy.websites.doNotTrackEnabled.
   blockThirdPartyCookies: false, // chrome.privacy.websites.thirdPartyCookiesAllowed (false = block).
   webRTCProtection: false, // chrome.privacy.network.webRTCIPHandlingPolicy.
@@ -83,16 +82,6 @@ async function clearCookies() {
  * Each wraps a Chrome API call in try/catch so one failure can't break
  * the rest of the startup sequence.
  * ------------------------------------------------------------------ */
-async function applyPreloadPages(enabled) {
-  try {
-    await chrome.privacy.websites.networkPredictionEnabled.set({
-      value: !!enabled
-    });
-  } catch (e) {
-    // console.debug("BM: applyPreloadPages failed", e);
-  }
-}
-
 async function applyDoNotTrack(enabled) {
   try {
     await chrome.privacy.websites.doNotTrackEnabled.set({ value: !!enabled });
@@ -128,7 +117,6 @@ async function applyWebRTCProtection(enabled) {
  */
 async function applyAllSettings(settings) {
   const s = settings || (await getSettings());
-  await applyPreloadPages(s.preloadPages);
   await applyDoNotTrack(s.doNotTrack);
   await applyThirdPartyCookies(s.blockThirdPartyCookies);
   await applyWebRTCProtection(s.webRTCProtection);
