@@ -12,7 +12,9 @@
     "tabs",
     "privacy",
     "contentSettings",
-    "alarms"
+    "alarms",
+    "system.memory",
+    "system.cpu"
   ],
   "background": {
     "service_worker": "background.js"

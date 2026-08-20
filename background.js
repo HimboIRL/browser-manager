@@ -16,6 +16,8 @@
 const DEFAULT_SETTINGS = {
   clearOnStartup: true, // Auto-clear cache on Chrome startup.
   tabHibernation: false, // Discard tabs inactive > HIBERNATION_MINUTES.
+  memoryLimiter: false, // Auto-hibernate inactive tabs under memory pressure.
+  memoryThresholdPercent: 20, // Kick in when free system memory drops below this %.
   doNotTrack: false, // chrome.privacy.websites.doNotTrackEnabled.
   blockThirdPartyCookies: false, // chrome.privacy.websites.thirdPartyCookiesAllowed (false = block).
   webRTCProtection: false, // chrome.privacy.network.webRTCIPHandlingPolicy.
@@ -25,6 +27,8 @@ const DEFAULT_SETTINGS = {
 const HIBERNATION_MINUTES = 60; // Tabs inactive longer than this are hibernated.
 
 const HIBERNATION_ALARM = "bm-tab-hibernation";
+const MEMORY_GUARD_ALARM = "bm-memory-guard";
+const MEMORY_GUARD_MINUTES = 1; // How often the limiter checks memory pressure.
 
 /* Tracks the last time each tab was activated (in-memory, best effort). */
 const tabLastActive = {};
@@ -134,8 +138,94 @@ async function syncAlarms(settings) {
     } else {
       await chrome.alarms.clear(HIBERNATION_ALARM);
     }
+
+    if (s.memoryLimiter) {
+      await chrome.alarms.create(MEMORY_GUARD_ALARM, {
+        periodInMinutes: MEMORY_GUARD_MINUTES
+      });
+    } else {
+      await chrome.alarms.clear(MEMORY_GUARD_ALARM);
+    }
   } catch (e) {
     // console.debug("BM: syncAlarms failed", e);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Resource helpers (system memory / CPU)
+ * These read SYSTEM-wide stats; Chrome has no stable API for its own
+ * per-process memory, so system usage is used as a practical proxy.
+ * ------------------------------------------------------------------ */
+function getMemoryInfo() {
+  return new Promise((resolve) => {
+    try {
+      chrome.system.memory.getInfo((info) => {
+        void chrome.runtime.lastError;
+        resolve(info || null);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+function freePercent(info) {
+  if (!info || !info.capacity) return 100;
+  return (info.availableCapacity / info.capacity) * 100;
+}
+
+/**
+ * Hibernate (discard) inactive tabs to relieve memory pressure.
+ * When `force` is true, discards every eligible inactive tab immediately
+ * (used by the "Free memory now" button). Otherwise discards least-recently
+ * used tabs one at a time until free memory rises above the threshold.
+ * Returns { discarded, freePct }.
+ */
+async function enforceMemoryLimit(force) {
+  const s = await getSettings();
+  if (!force && !s.memoryLimiter) return { discarded: 0 };
+
+  let discarded = 0;
+  try {
+    let info = await getMemoryInfo();
+    let freePct = freePercent(info);
+    const threshold = s.memoryThresholdPercent || 20;
+
+    if (!force && freePct >= threshold) {
+      return { discarded: 0, freePct };
+    }
+
+    const tabs = await chrome.tabs.query({});
+    const candidates = tabs.filter(
+      (t) =>
+        !t.active &&
+        !t.audible &&
+        !t.pinned &&
+        !t.discarded &&
+        typeof t.id === "number"
+    );
+    // Least-recently-active first.
+    candidates.sort(
+      (a, b) => (tabLastActive[a.id] || 0) - (tabLastActive[b.id] || 0)
+    );
+
+    for (const tab of candidates) {
+      try {
+        await chrome.tabs.discard(tab.id);
+        discarded++;
+      } catch (inner) {
+        // console.debug("BM: discard failed for tab", tab.id, inner);
+      }
+      if (!force) {
+        info = await getMemoryInfo();
+        freePct = freePercent(info);
+        if (freePct >= threshold) break;
+      }
+    }
+    return { discarded, freePct };
+  } catch (e) {
+    // console.debug("BM: enforceMemoryLimit failed", e);
+    return { discarded };
   }
 }
 
@@ -209,6 +299,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   const settings = await getSettings();
   if (alarm.name === HIBERNATION_ALARM && settings.tabHibernation) {
     await discardInactiveTabs(HIBERNATION_MINUTES);
+  } else if (alarm.name === MEMORY_GUARD_ALARM && settings.memoryLimiter) {
+    await enforceMemoryLimit(false);
   }
 });
 
@@ -234,6 +326,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "SYNC_ALARMS": {
           await syncAlarms();
           sendResponse({ ok: true });
+          break;
+        }
+        case "FREE_MEMORY_NOW": {
+          const result = await enforceMemoryLimit(true);
+          sendResponse({ ok: true, ...result });
           break;
         }
         case "APPLY_ALL": {

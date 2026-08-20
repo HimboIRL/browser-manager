@@ -15,6 +15,8 @@
 const DEFAULT_SETTINGS = {
   clearOnStartup: true,
   tabHibernation: false,
+  memoryLimiter: false,
+  memoryThresholdPercent: 20,
   doNotTrack: false,
   blockThirdPartyCookies: false,
   webRTCProtection: false,
@@ -185,12 +187,16 @@ function promptAdmin() {
  * ------------------------------------------------------------------ */
 function initAdvanced() {
   const cog = $("advancedCog");
-  const tabBar = $("tabBar");
-  if (!cog || !tabBar) return;
+  const adminTabs = document.querySelectorAll(".tab--admin");
+  if (!cog || !adminTabs.length) return;
 
   cog.addEventListener("click", async () => {
-    // If already unlocked this session, just jump back to the tabs.
-    if (!tabBar.classList.contains("is-hidden")) {
+    const locked = [...adminTabs].some((t) =>
+      t.classList.contains("is-hidden")
+    );
+
+    // If already unlocked this session, just jump back to the admin tabs.
+    if (!locked) {
       const perfTab = document.querySelector('.tab[data-tab="performance"]');
       if (perfTab) perfTab.click();
       return;
@@ -199,7 +205,7 @@ function initAdvanced() {
     const ok = await promptAdmin();
     if (!ok) return;
 
-    tabBar.classList.remove("is-hidden");
+    adminTabs.forEach((t) => t.classList.remove("is-hidden"));
 
     // Jump straight to the first admin tab (Performance).
     const perfTab = document.querySelector('.tab[data-tab="performance"]');
@@ -315,6 +321,196 @@ function initMemorySaver() {
     } catch (e) {
       /* no-op */
     }
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Monitor tab: live system memory / CPU usage + tab stats, plus the
+ * memory limiter controls and a "Free memory now" action.
+ *
+ * NOTE: chrome.system.* reports SYSTEM-wide usage. Chrome has no stable
+ * API for its own per-process memory, so this is a practical proxy.
+ * ------------------------------------------------------------------ */
+function getSystemMemory() {
+  return new Promise((resolve) => {
+    try {
+      chrome.system.memory.getInfo((info) => {
+        void chrome.runtime.lastError;
+        resolve(info || null);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+function getCpuInfo() {
+  return new Promise((resolve) => {
+    try {
+      chrome.system.cpu.getInfo((info) => {
+        void chrome.runtime.lastError;
+        resolve(info || null);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+function formatGB(bytes) {
+  return (bytes / 1024 / 1024 / 1024).toFixed(1);
+}
+
+/** Sum busy/total ticks across all logical processors. */
+function cpuTotals(info) {
+  let busy = 0;
+  let total = 0;
+  if (info && Array.isArray(info.processors)) {
+    for (const p of info.processors) {
+      const u = p.usage || {};
+      const t = (u.user || 0) + (u.kernel || 0) + (u.idle || 0);
+      busy += (u.user || 0) + (u.kernel || 0);
+      total += t;
+    }
+  }
+  return { busy, total };
+}
+
+function initMonitor() {
+  const memFill = $("memFill");
+  const memValue = $("memValue");
+  const memSub = $("memSub");
+  const cpuFill = $("cpuFill");
+  const cpuValue = $("cpuValue");
+  const cpuSub = $("cpuSub");
+  const tabTotal = $("tabTotal");
+  const tabActive = $("tabActive");
+  const tabHibernated = $("tabHibernated");
+  if (!memFill) return; // Monitor panel not present.
+
+  let prevCpu = null;
+
+  async function refreshMemory() {
+    const info = await getSystemMemory();
+    if (!info || !info.capacity) {
+      memValue.textContent = "N/A";
+      memSub.textContent = "Memory info unavailable.";
+      return;
+    }
+    const usedBytes = info.capacity - info.availableCapacity;
+    const usedPct = (usedBytes / info.capacity) * 100;
+    memFill.style.width = usedPct.toFixed(0) + "%";
+    memFill.classList.toggle("is-high", usedPct >= 85);
+    memValue.textContent = usedPct.toFixed(0) + "%";
+    memSub.textContent =
+      formatGB(usedBytes) +
+      " GB used of " +
+      formatGB(info.capacity) +
+      " GB \u00b7 " +
+      formatGB(info.availableCapacity) +
+      " GB free";
+  }
+
+  async function refreshCpu() {
+    const info = await getCpuInfo();
+    if (!info) {
+      cpuValue.textContent = "N/A";
+      cpuSub.textContent = "CPU info unavailable.";
+      return;
+    }
+    const cur = cpuTotals(info);
+    if (prevCpu) {
+      const dBusy = cur.busy - prevCpu.busy;
+      const dTotal = cur.total - prevCpu.total;
+      const load = dTotal > 0 ? Math.max(0, Math.min(100, (dBusy / dTotal) * 100)) : 0;
+      cpuFill.style.width = load.toFixed(0) + "%";
+      cpuFill.classList.toggle("is-high", load >= 85);
+      cpuValue.textContent = load.toFixed(0) + "%";
+      const cores = info.numOfProcessors || (info.processors || []).length;
+      cpuSub.textContent =
+        cores + (cores === 1 ? " logical core" : " logical cores");
+    }
+    prevCpu = cur;
+  }
+
+  async function refreshTabs() {
+    try {
+      const tabs = await chrome.tabs.query({});
+      const total = tabs.length;
+      const hibernated = tabs.filter((t) => t.discarded).length;
+      tabTotal.textContent = String(total);
+      tabActive.textContent = String(total - hibernated);
+      tabHibernated.textContent = String(hibernated);
+    } catch (e) {
+      /* leave defaults */
+    }
+  }
+
+  async function refreshAll() {
+    await Promise.all([refreshMemory(), refreshCpu(), refreshTabs()]);
+  }
+
+  // Prime CPU with two quick samples so a value shows almost immediately.
+  refreshAll();
+  setTimeout(refreshCpu, 600);
+  setInterval(refreshAll, 2000);
+
+  // ---- Free memory now ----
+  const freeBtn = $("freeMemoryBtn");
+  const freeResult = $("freeResult");
+  if (freeBtn) {
+    freeBtn.addEventListener("click", async () => {
+      freeBtn.disabled = true;
+      const response = await sendMessage({ type: "FREE_MEMORY_NOW" });
+      freeBtn.disabled = false;
+      if (response && response.ok) {
+        const n = response.discarded || 0;
+        freeResult.textContent =
+          n === 0
+            ? "No inactive tabs to hibernate."
+            : "Hibernated " + n + (n === 1 ? " tab." : " tabs.");
+      } else {
+        freeResult.textContent = "Could not free memory.";
+      }
+      freeResult.hidden = false;
+      await refreshTabs();
+      setTimeout(() => {
+        freeResult.hidden = true;
+      }, 3000);
+    });
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Memory limiter controls (toggle + threshold slider) on the Monitor tab.
+ * ------------------------------------------------------------------ */
+async function initLimiter() {
+  const toggle = $("memoryLimiter");
+  const slider = $("memoryThreshold");
+  const valueLabel = $("thresholdValue");
+  if (!toggle || !slider) return;
+
+  const stored = await getStored();
+
+  toggle.checked = !!stored.memoryLimiter;
+  slider.value = String(stored.memoryThresholdPercent || 20);
+  valueLabel.textContent = slider.value + "%";
+  slider.disabled = !toggle.checked;
+
+  toggle.addEventListener("change", async () => {
+    await saveSetting("memoryLimiter", toggle.checked);
+    slider.disabled = !toggle.checked;
+    await sendMessage({ type: "SYNC_ALARMS" });
+  });
+
+  // Live label while dragging.
+  slider.addEventListener("input", () => {
+    valueLabel.textContent = slider.value + "%";
+  });
+
+  // Persist on release.
+  slider.addEventListener("change", async () => {
+    await saveSetting("memoryThresholdPercent", parseInt(slider.value, 10));
   });
 }
 
@@ -448,6 +644,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   initClearCache();
   initClearCookies();
   initMemorySaver();
+  initMonitor();
+  await initLimiter();
   initFooter();
   await initLastCleared();
   await initToggles();

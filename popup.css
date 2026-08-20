@@ -565,6 +565,219 @@ body {
   transform: rotate(45deg);
 }
 
+/* Individual admin tabs stay hidden until unlocked. */
+.tab.is-hidden {
+  display: none;
+}
+
+/* ===================== Monitor tab ===================== */
+.meter-block {
+  margin-bottom: 14px;
+}
+
+.meter-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.meter-block__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bm-charcoal);
+}
+
+.meter-block__value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bm-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter {
+  height: 8px;
+  border-radius: 6px;
+  background: var(--bm-gray);
+  overflow: hidden;
+  border: 1px solid var(--bm-gray-border);
+}
+
+.meter__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 6px;
+  background: var(--bm-primary);
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* High-usage warning color (added via JS when >85%). */
+.meter__fill.is-high {
+  background: #d64545;
+}
+
+.meter__fill--cpu {
+  background: var(--bm-accent);
+}
+
+.meter-block__sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--bm-text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tab stat cards */
+.stat-grid {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border: 1px solid var(--bm-gray-border);
+  border-radius: var(--bm-radius);
+  background: var(--bm-gray);
+}
+
+.stat__num {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--bm-charcoal);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__cap {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--bm-text-sub);
+}
+
+/* Free memory now button */
+.btn-free {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  border: none;
+  border-radius: var(--bm-radius);
+  background: var(--bm-primary);
+  color: var(--bm-white);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--bm-shadow);
+  transition: background 0.18s ease, transform 0.08s ease;
+}
+
+.btn-free:hover {
+  background: var(--bm-primary-dark);
+}
+
+.btn-free:active {
+  transform: scale(0.985);
+}
+
+.btn-free__icon {
+  display: inline-flex;
+}
+
+.free-result {
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bm-success);
+  text-align: center;
+}
+
+.free-result[hidden] {
+  display: none;
+}
+
+/* Limiter block */
+.limiter {
+  margin-top: 16px;
+  padding-top: 4px;
+  border-top: 1px solid var(--bm-gray-border);
+}
+
+.range-row {
+  padding: 12px 0 4px;
+}
+
+.range-row__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.range-row__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bm-text-sub);
+}
+
+.range-row__value {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--bm-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Range slider (no third-party libs) */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--bm-gray-off);
+  outline: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bm-primary);
+  border: 2px solid var(--bm-white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.range::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+}
+
+.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bm-primary);
+  border: 2px solid var(--bm-white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.range:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ===================== Admin password modal ===================== */
 .modal {
   position: fixed;

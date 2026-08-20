@@ -28,18 +28,23 @@
         </button>
       </header>
 
-      <!-- ===================== Tab bar (hidden until Advanced Settings) ===================== -->
-      <nav class="tabs is-hidden" id="tabBar" role="tablist" aria-label="Sections">
+      <!-- ===================== Tab bar =====================
+           Cache + Monitor are always available. Performance / Privacy /
+           Settings stay hidden until the admin password is entered. -->
+      <nav class="tabs" id="tabBar" role="tablist" aria-label="Sections">
         <button class="tab is-active" role="tab" data-tab="cache" aria-selected="true">
           Cache
         </button>
-        <button class="tab" role="tab" data-tab="performance" aria-selected="false">
+        <button class="tab" role="tab" data-tab="monitor" aria-selected="false">
+          Monitor
+        </button>
+        <button class="tab tab--admin is-hidden" role="tab" data-tab="performance" aria-selected="false">
           Performance
         </button>
-        <button class="tab" role="tab" data-tab="privacy" aria-selected="false">
+        <button class="tab tab--admin is-hidden" role="tab" data-tab="privacy" aria-selected="false">
           Privacy
         </button>
-        <button class="tab" role="tab" data-tab="settings" aria-selected="false">
+        <button class="tab tab--admin is-hidden" role="tab" data-tab="settings" aria-selected="false">
           Settings
         </button>
       </nav>
@@ -132,6 +137,109 @@
               run more smoothly. It removes outdated files so pages load
               faster and display the latest version. This is a safe, routine
               cleanup&nbsp;&mdash; you stay signed in to your sites.
+            </span>
+          </div>
+        </section>
+
+        <!-- ------- Tab: Monitor (live resource usage + limiter) ------- -->
+        <section class="panel" data-panel="monitor" role="tabpanel">
+          <p class="panel__lead">
+            Live system resource usage. Chrome is typically the largest
+            consumer, so this is a practical view of its impact.
+          </p>
+
+          <!-- Memory meter -->
+          <div class="meter-block">
+            <div class="meter-block__head">
+              <span class="meter-block__label">Memory</span>
+              <span class="meter-block__value" id="memValue">&mdash;</span>
+            </div>
+            <div class="meter" aria-hidden="true">
+              <div class="meter__fill" id="memFill" style="width: 0%"></div>
+            </div>
+            <span class="meter-block__sub" id="memSub">Reading&hellip;</span>
+          </div>
+
+          <!-- CPU meter -->
+          <div class="meter-block">
+            <div class="meter-block__head">
+              <span class="meter-block__label">CPU</span>
+              <span class="meter-block__value" id="cpuValue">&mdash;</span>
+            </div>
+            <div class="meter" aria-hidden="true">
+              <div class="meter__fill meter__fill--cpu" id="cpuFill" style="width: 0%"></div>
+            </div>
+            <span class="meter-block__sub" id="cpuSub">Sampling&hellip;</span>
+          </div>
+
+          <!-- Tab stats -->
+          <div class="stat-grid">
+            <div class="stat">
+              <span class="stat__num" id="tabTotal">&mdash;</span>
+              <span class="stat__cap">Tabs</span>
+            </div>
+            <div class="stat">
+              <span class="stat__num" id="tabActive">&mdash;</span>
+              <span class="stat__cap">Active</span>
+            </div>
+            <div class="stat">
+              <span class="stat__num" id="tabHibernated">&mdash;</span>
+              <span class="stat__cap">Hibernated</span>
+            </div>
+          </div>
+
+          <!-- Free memory now -->
+          <button id="freeMemoryBtn" class="btn-free" type="button">
+            <span class="btn-free__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />
+              </svg>
+            </span>
+            <span class="btn-free__label">Free memory now</span>
+          </button>
+          <p id="freeResult" class="free-result" hidden></p>
+
+          <!-- Resource limiter -->
+          <div class="limiter">
+            <div class="toggle-row">
+              <div class="toggle-row__text">
+                <span class="toggle-row__title">Memory Limiter</span>
+                <span class="toggle-row__sub">
+                  Automatically hibernate inactive tabs when free memory drops
+                  below the threshold below.
+                </span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="memoryLimiter" />
+                <span class="switch__slider"></span>
+              </label>
+            </div>
+
+            <div class="range-row">
+              <div class="range-row__head">
+                <span class="range-row__label">Hibernate when free memory is below</span>
+                <span class="range-row__value" id="thresholdValue">20%</span>
+              </div>
+              <input type="range" id="memoryThreshold" class="range"
+                     min="5" max="50" step="5" value="20" />
+            </div>
+          </div>
+
+          <div class="managed-note">
+            <span class="managed-note__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+            </span>
+            <span>
+              Memory and CPU figures are system-wide. Chrome does not expose a
+              stable API for its own per-process memory.
             </span>
           </div>
         </section>
