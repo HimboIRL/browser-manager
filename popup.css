@@ -778,6 +778,141 @@ body {
   cursor: not-allowed;
 }
 
+/* ===================== Per-tab memory breakdown ===================== */
+.tab-mem {
+  margin: 0 0 14px;
+}
+
+.tab-mem__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tab-mem__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bm-charcoal);
+}
+
+.tab-mem__count {
+  font-size: 10.5px;
+  color: var(--bm-text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-mem__list {
+  max-height: 178px;
+  overflow-y: auto;
+  border: 1px solid var(--bm-gray-border);
+  border-radius: var(--bm-radius);
+  background: var(--bm-gray);
+}
+
+.tab-mem__placeholder {
+  display: block;
+  padding: 14px;
+  font-size: 11px;
+  color: var(--bm-text-sub);
+  text-align: center;
+}
+
+/* Individual tab rows */
+.tab-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--bm-gray-border);
+  transition: background 0.13s ease;
+}
+
+.tab-row:last-child {
+  border-bottom: none;
+}
+
+.tab-row:hover {
+  background: rgba(75, 101, 132, 0.06);
+}
+
+.tab-row__icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--bm-text-sub);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-row__icon img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 2px;
+}
+
+.tab-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tab-row__title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bm-charcoal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.tab-row__domain {
+  font-size: 10px;
+  color: var(--bm-text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.tab-row--discarded .tab-row__title {
+  font-style: italic;
+  color: var(--bm-text-sub);
+}
+
+.tab-row__mem {
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: 52px;
+}
+
+.tab-row__val {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bm-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-row__bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bm-gray-off);
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.tab-row__fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--bm-primary);
+  transition: width 0.35s ease;
+  min-width: 4px;
+}
+
 /* ===================== Admin password modal ===================== */
 .modal {
   position: fixed;

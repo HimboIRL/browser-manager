@@ -188,6 +188,17 @@
             </div>
           </div>
 
+          <!-- Per-tab memory breakdown -->
+          <div class="tab-mem">
+            <div class="tab-mem__head">
+              <span class="tab-mem__title">Memory by Tab</span>
+              <span class="tab-mem__count" id="tabMemCount"></span>
+            </div>
+            <div class="tab-mem__list" id="tabMemList">
+              <span class="tab-mem__placeholder">Loading&hellip;</span>
+            </div>
+          </div>
+
           <!-- Free memory now -->
           <button id="freeMemoryBtn" class="btn-free" type="button">
             <span class="btn-free__icon" aria-hidden="true">
@@ -238,8 +249,9 @@
               </svg>
             </span>
             <span>
-              Memory and CPU figures are system-wide. Chrome does not expose a
-              stable API for its own per-process memory.
+              Memory and CPU meters show system-wide usage. Tab memory uses the
+              Chrome Processes API &mdash; private RSS per renderer, divided
+              equally among co-hosted tabs.
             </span>
           </div>
         </section>

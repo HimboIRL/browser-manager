@@ -515,6 +515,224 @@ async function initLimiter() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Per-tab memory breakdown (Monitor tab)
+ * Uses chrome.processes API (requires "processes" permission).
+ * Falls back to a plain tab list (no memory values) if unavailable.
+ * ------------------------------------------------------------------ */
+
+/** Wraps chrome.processes.getProcessInfo in a Promise. Returns null if API absent. */
+function getProcessInfo() {
+  return new Promise((resolve) => {
+    try {
+      if (!chrome.processes || typeof chrome.processes.getProcessInfo !== "function") {
+        resolve(null);
+        return;
+      }
+      chrome.processes.getProcessInfo([], true, (processes) => {
+        void chrome.runtime.lastError;
+        resolve(processes || null);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+/** Format bytes to a human-readable string (MB or GB). */
+function formatMB(bytes) {
+  if (bytes === null || bytes === undefined) return "";
+  if (bytes >= 1024 * 1024 * 1024) {
+    return (bytes / 1024 / 1024 / 1024).toFixed(1) + " GB";
+  }
+  return Math.round(bytes / 1024 / 1024) + " MB";
+}
+
+/** Extract a display domain from a URL string. */
+function getDomain(url) {
+  if (!url) return "";
+  try {
+    const h = new URL(url).hostname;
+    return h.replace(/^www\./, "");
+  } catch (e) {
+    return "";
+  }
+}
+
+/** Escape text for safe innerHTML insertion. */
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Build a .tab-row DOM element for one tab.
+ * @param {object} tab - chrome.tabs.Tab
+ * @param {number|null} mem - memory bytes for this tab (null = unknown)
+ * @param {number} maxMem - largest memory value in the set (for bar scaling)
+ */
+function buildTabRow(tab, mem, maxMem) {
+  const row = document.createElement("div");
+  row.className = "tab-row" + (tab.discarded ? " tab-row--discarded" : "");
+  row.title = tab.title || tab.url || "(no title)";
+
+  // Icon (favIconUrl img, fallback to inline SVG page icon)
+  const iconWrap = document.createElement("span");
+  iconWrap.className = "tab-row__icon";
+  if (tab.favIconUrl && tab.favIconUrl.startsWith("http")) {
+    const img = document.createElement("img");
+    img.src = tab.favIconUrl;
+    img.alt = "";
+    img.onerror = () => {
+      img.replaceWith(pageIconSvg());
+    };
+    iconWrap.appendChild(img);
+  } else {
+    iconWrap.appendChild(pageIconSvg());
+  }
+
+  // Info block
+  const info = document.createElement("div");
+  info.className = "tab-row__info";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "tab-row__title";
+  titleEl.textContent = tab.title || tab.url || "(no title)";
+
+  const domainEl = document.createElement("div");
+  domainEl.className = "tab-row__domain";
+  domainEl.textContent = getDomain(tab.url);
+
+  info.appendChild(titleEl);
+  info.appendChild(domainEl);
+
+  // Memory value + relative bar
+  const memBlock = document.createElement("div");
+  memBlock.className = "tab-row__mem";
+
+  const val = document.createElement("span");
+  val.className = "tab-row__val";
+  val.textContent = mem !== null ? formatMB(mem) : (tab.discarded ? "Hibernated" : "—");
+
+  const bar = document.createElement("div");
+  bar.className = "tab-row__bar";
+  const fill = document.createElement("div");
+  fill.className = "tab-row__fill";
+  const pct = (mem !== null && maxMem > 0) ? Math.max(4, Math.round((mem / maxMem) * 100)) : 0;
+  fill.style.width = pct + "%";
+  bar.appendChild(fill);
+
+  memBlock.appendChild(val);
+  memBlock.appendChild(bar);
+
+  row.appendChild(iconWrap);
+  row.appendChild(info);
+  row.appendChild(memBlock);
+
+  // Click: switch to this tab.
+  row.addEventListener("click", () => {
+    try {
+      chrome.tabs.update(tab.id, { active: true });
+    } catch (e) { /* no-op */ }
+  });
+
+  return row;
+}
+
+/** Tiny inline SVG page icon for tabs without a favicon. */
+function pageIconSvg() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  const path1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path1.setAttribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z");
+  const path2 = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  path2.setAttribute("points", "14 2 14 8 20 8");
+  svg.appendChild(path1);
+  svg.appendChild(path2);
+  return svg;
+}
+
+function initTabMemory() {
+  const list = $("tabMemList");
+  const count = $("tabMemCount");
+  if (!list) return;
+
+  async function refresh() {
+    let tabs;
+    try {
+      tabs = await chrome.tabs.query({});
+    } catch (e) {
+      return;
+    }
+
+    const processes = await getProcessInfo();
+
+    // Build a map: tabId -> memory bytes (null if unknown)
+    const tabMem = new Map();
+    tabs.forEach((t) => tabMem.set(t.id, null));
+
+    if (processes) {
+      // Each renderer process may host multiple tabs; divide memory equally.
+      for (const pid in processes) {
+        const proc = processes[pid];
+        if (!proc || proc.type !== "renderer") continue;
+        const hostedTabIds = Array.isArray(proc.tabs) ? proc.tabs : [];
+        if (hostedTabIds.length === 0) continue;
+        const memEach = (proc.privateMemory || 0) / hostedTabIds.length;
+        hostedTabIds.forEach((tid) => {
+          if (tabMem.has(tid)) {
+            tabMem.set(tid, (tabMem.get(tid) || 0) + memEach);
+          }
+        });
+      }
+    }
+
+    // Sort: tabs with known memory first (desc), then unknown, then hibernated.
+    tabs.sort((a, b) => {
+      const ma = tabMem.get(a.id);
+      const mb = tabMem.get(b.id);
+      if (ma !== null && mb !== null) return mb - ma;
+      if (ma !== null) return -1;
+      if (mb !== null) return 1;
+      // Both null: active before discarded.
+      if (a.discarded !== b.discarded) return a.discarded ? 1 : -1;
+      return 0;
+    });
+
+    const maxMem = Math.max(0, ...tabs.map((t) => tabMem.get(t.id) || 0));
+
+    // Render rows.
+    list.innerHTML = "";
+    tabs.forEach((tab) => {
+      list.appendChild(buildTabRow(tab, tabMem.get(tab.id), maxMem));
+    });
+
+    // Update count label.
+    const withMem = [...tabMem.values()].filter((v) => v !== null).length;
+    if (processes && withMem > 0) {
+      count.textContent = tabs.length + " tabs";
+    } else {
+      count.textContent = tabs.length + " tabs (no memory data)";
+    }
+  }
+
+  refresh();
+  const interval = setInterval(refresh, 3000);
+
+  // Stop polling when the popup closes to avoid dangling timers.
+  window.addEventListener("unload", () => clearInterval(interval));
+}
+
+/* ------------------------------------------------------------------ *
  * Toggle wiring
  * Each toggle: (1) restores state, (2) on change saves + applies.
  * ------------------------------------------------------------------ */
@@ -645,6 +863,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initClearCookies();
   initMemorySaver();
   initMonitor();
+  initTabMemory();
   await initLimiter();
   initFooter();
   await initLastCleared();
