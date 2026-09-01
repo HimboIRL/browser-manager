@@ -14,8 +14,7 @@
     "contentSettings",
     "alarms",
     "system.memory",
-    "system.cpu",
-    "processes"
+    "system.cpu"
   ],
   "background": {
     "service_worker": "background.js"

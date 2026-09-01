@@ -883,34 +883,22 @@ body {
   color: var(--bm-text-sub);
 }
 
-.tab-row__mem {
+.tab-row__status {
   flex: 0 0 auto;
-  text-align: right;
-  min-width: 52px;
-}
-
-.tab-row__val {
-  display: block;
   font-size: 11px;
-  font-weight: 700;
-  color: var(--bm-primary);
+  font-weight: 600;
+  color: var(--bm-text-sub);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.tab-row__bar {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--bm-gray-off);
-  margin-top: 3px;
-  overflow: hidden;
+.tab-row__status--active {
+  color: var(--bm-primary);
 }
 
-.tab-row__fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--bm-primary);
-  transition: width 0.35s ease;
-  min-width: 4px;
+.tab-row__status--hibernated {
+  color: var(--bm-text-sub);
+  font-style: italic;
 }
 
 /* ===================== Admin password modal ===================== */

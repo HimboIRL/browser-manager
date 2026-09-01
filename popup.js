@@ -515,36 +515,25 @@ async function initLimiter() {
 }
 
 /* ------------------------------------------------------------------ *
- * Per-tab memory breakdown (Monitor tab)
- * Uses chrome.processes API (requires "processes" permission).
- * Falls back to a plain tab list (no memory values) if unavailable.
+ * Open Tabs list (Monitor tab)
+ * Sorted by activity: active tab first, then most recently accessed,
+ * hibernated tabs last. Click any row to switch to that tab.
+ *
+ * NOTE: chrome.processes (per-tab memory) is a Chrome Dev channel API
+ * and is not available in stable Chrome builds.
  * ------------------------------------------------------------------ */
 
-/** Wraps chrome.processes.getProcessInfo in a Promise. Returns null if API absent. */
-function getProcessInfo() {
-  return new Promise((resolve) => {
-    try {
-      if (!chrome.processes || typeof chrome.processes.getProcessInfo !== "function") {
-        resolve(null);
-        return;
-      }
-      chrome.processes.getProcessInfo([], true, (processes) => {
-        void chrome.runtime.lastError;
-        resolve(processes || null);
-      });
-    } catch (e) {
-      resolve(null);
-    }
-  });
-}
-
-/** Format bytes to a human-readable string (MB or GB). */
-function formatMB(bytes) {
-  if (bytes === null || bytes === undefined) return "";
-  if (bytes >= 1024 * 1024 * 1024) {
-    return (bytes / 1024 / 1024 / 1024).toFixed(1) + " GB";
-  }
-  return Math.round(bytes / 1024 / 1024) + " MB";
+/** Format a timestamp as a relative "time ago" string. */
+function timeAgo(ts) {
+  if (!ts) return "\u2014";
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 10) return "Just now";
+  if (seconds < 60) return seconds + "s ago";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  return Math.floor(hours / 24) + "d ago";
 }
 
 /** Extract a display domain from a URL string. */
@@ -558,22 +547,11 @@ function getDomain(url) {
   }
 }
 
-/** Escape text for safe innerHTML insertion. */
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /**
  * Build a .tab-row DOM element for one tab.
  * @param {object} tab - chrome.tabs.Tab
- * @param {number|null} mem - memory bytes for this tab (null = unknown)
- * @param {number} maxMem - largest memory value in the set (for bar scaling)
  */
-function buildTabRow(tab, mem, maxMem) {
+function buildTabRow(tab) {
   const row = document.createElement("div");
   row.className = "tab-row" + (tab.discarded ? " tab-row--discarded" : "");
   row.title = tab.title || tab.url || "(no title)";
@@ -608,28 +586,25 @@ function buildTabRow(tab, mem, maxMem) {
   info.appendChild(titleEl);
   info.appendChild(domainEl);
 
-  // Memory value + relative bar
-  const memBlock = document.createElement("div");
-  memBlock.className = "tab-row__mem";
-
-  const val = document.createElement("span");
-  val.className = "tab-row__val";
-  val.textContent = mem !== null ? formatMB(mem) : (tab.discarded ? "Hibernated" : "—");
-
-  const bar = document.createElement("div");
-  bar.className = "tab-row__bar";
-  const fill = document.createElement("div");
-  fill.className = "tab-row__fill";
-  const pct = (mem !== null && maxMem > 0) ? Math.max(4, Math.round((mem / maxMem) * 100)) : 0;
-  fill.style.width = pct + "%";
-  bar.appendChild(fill);
-
-  memBlock.appendChild(val);
-  memBlock.appendChild(bar);
+  // Status badge
+  const status = document.createElement("div");
+  let statusText, extraClass;
+  if (tab.active) {
+    statusText = "Active";
+    extraClass = "tab-row__status--active";
+  } else if (tab.discarded) {
+    statusText = "Hibernated";
+    extraClass = "tab-row__status--hibernated";
+  } else {
+    statusText = tab.lastAccessed ? timeAgo(tab.lastAccessed) : "\u2014";
+    extraClass = "";
+  }
+  status.className = "tab-row__status" + (extraClass ? " " + extraClass : "");
+  status.textContent = statusText;
 
   row.appendChild(iconWrap);
   row.appendChild(info);
-  row.appendChild(memBlock);
+  row.appendChild(status);
 
   // Click: switch to this tab.
   row.addEventListener("click", () => {
@@ -674,55 +649,20 @@ function initTabMemory() {
       return;
     }
 
-    const processes = await getProcessInfo();
-
-    // Build a map: tabId -> memory bytes (null if unknown)
-    const tabMem = new Map();
-    tabs.forEach((t) => tabMem.set(t.id, null));
-
-    if (processes) {
-      // Each renderer process may host multiple tabs; divide memory equally.
-      for (const pid in processes) {
-        const proc = processes[pid];
-        if (!proc || proc.type !== "renderer") continue;
-        const hostedTabIds = Array.isArray(proc.tabs) ? proc.tabs : [];
-        if (hostedTabIds.length === 0) continue;
-        const memEach = (proc.privateMemory || 0) / hostedTabIds.length;
-        hostedTabIds.forEach((tid) => {
-          if (tabMem.has(tid)) {
-            tabMem.set(tid, (tabMem.get(tid) || 0) + memEach);
-          }
-        });
-      }
-    }
-
-    // Sort: tabs with known memory first (desc), then unknown, then hibernated.
+    // Sort: active tab first, then most recently accessed, hibernated last.
     tabs.sort((a, b) => {
-      const ma = tabMem.get(a.id);
-      const mb = tabMem.get(b.id);
-      if (ma !== null && mb !== null) return mb - ma;
-      if (ma !== null) return -1;
-      if (mb !== null) return 1;
-      // Both null: active before discarded.
+      if (a.active !== b.active) return a.active ? -1 : 1;
       if (a.discarded !== b.discarded) return a.discarded ? 1 : -1;
-      return 0;
+      return (b.lastAccessed || 0) - (a.lastAccessed || 0);
     });
-
-    const maxMem = Math.max(0, ...tabs.map((t) => tabMem.get(t.id) || 0));
 
     // Render rows.
     list.innerHTML = "";
     tabs.forEach((tab) => {
-      list.appendChild(buildTabRow(tab, tabMem.get(tab.id), maxMem));
+      list.appendChild(buildTabRow(tab));
     });
 
-    // Update count label.
-    const withMem = [...tabMem.values()].filter((v) => v !== null).length;
-    if (processes && withMem > 0) {
-      count.textContent = tabs.length + " tabs";
-    } else {
-      count.textContent = tabs.length + " tabs (no memory data)";
-    }
+    count.textContent = tabs.length + (tabs.length === 1 ? " tab" : " tabs");
   }
 
   refresh();
