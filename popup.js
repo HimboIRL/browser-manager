@@ -1,8 +1,8 @@
 /**
  * Browser Manager - Popup controller
  * -----------------------------------------------------------------
- * - Restores UI state from chrome.storage.local and the live chrome.privacy /
- *   chrome.contentSettings values on open.
+ * - Restores UI state from chrome.storage.local and the live chrome.privacy
+ *   values on open.
  * - Persists and applies each change immediately.
  * - Handles the Clear Cache action with loading + success states.
  *
@@ -645,7 +645,10 @@ function initTabMemory() {
   async function refresh() {
     let tabs;
     try {
-      tabs = await chrome.tabs.query({});
+      // Route through the service worker so url/title/favIconUrl are populated
+      // from the background's changeInfo cache (no `tabs` permission required).
+      const resp = await chrome.runtime.sendMessage({ type: "GET_TABS_INFO" });
+      tabs = resp?.tabs || [];
     } catch (e) {
       return;
     }

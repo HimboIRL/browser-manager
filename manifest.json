@@ -2,16 +2,14 @@
   "manifest_version": 3,
   "name": "Browser Manager",
   "short_name": "Browser Manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Enterprise browser utility. One-click cache clearing plus managed performance and privacy controls. Managed by IT Help Desk.",
   "author": "Browser Manager",
   "minimum_chrome_version": "110",
   "permissions": [
     "browsingData",
     "storage",
-    "tabs",
     "privacy",
-    "contentSettings",
     "alarms",
     "system.memory",
     "system.cpu"
