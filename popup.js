@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
   tabHibernation: false,
   memoryLimiter: false,
   memoryThresholdPercent: 20,
+  tabDedupe: true,
   doNotTrack: false,
   blockThirdPartyCookies: false,
   webRTCProtection: false,
@@ -690,6 +691,7 @@ async function initToggles() {
   /* ---- Performance ---- */
   // Tab Hibernation lives only in storage (driven by an alarm).
   setChecked("tabHibernation", stored.tabHibernation);
+  setChecked("tabDedupe", stored.tabDedupe);
 
   /* ---- Privacy ---- */
   const liveDnt = await getPref(chrome.privacy.websites.doNotTrackEnabled);
@@ -719,6 +721,10 @@ async function initToggles() {
   bindToggle("tabHibernation", async (v) => {
     await saveSetting("tabHibernation", v);
     await sendMessage({ type: "SYNC_ALARMS" });
+  });
+
+  bindToggle("tabDedupe", async (v) => {
+    await saveSetting("tabDedupe", v);
   });
 
   bindToggle("doNotTrack", async (v) => {

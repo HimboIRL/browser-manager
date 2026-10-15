@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   tabHibernation: false, // Discard tabs inactive > HIBERNATION_MINUTES.
   memoryLimiter: false, // Auto-hibernate inactive tabs under memory pressure.
   memoryThresholdPercent: 20, // Kick in when free system memory drops below this %.
+  tabDedupe: true, // Redirect to existing tab instead of opening a duplicate.
   doNotTrack: false, // chrome.privacy.websites.doNotTrackEnabled.
   blockThirdPartyCookies: false, // chrome.privacy.websites.thirdPartyCookiesAllowed (false = block).
   webRTCProtection: false, // chrome.privacy.network.webRTCIPHandlingPolicy.
@@ -32,6 +33,9 @@ const MEMORY_GUARD_MINUTES = 1; // How often the limiter checks memory pressure.
 
 /* Tracks the last time each tab was activated (in-memory, best effort). */
 const tabLastActive = {};
+
+/* Tracks tab IDs that were freshly created this session (for deduplication). */
+const newTabIds = new Set();
 
 /* ------------------------------------------------------------------ *
  * Storage helpers
@@ -263,6 +267,23 @@ async function discardInactiveTabs(thresholdMinutes) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Tab deduplication helper
+ * Normalises a URL for comparison: strips fragment, removes trailing
+ * slash from the pathname so /mail/u/0/ and /mail/u/0 match, keeps
+ * query string (different params = different page).
+ * ------------------------------------------------------------------ */
+function normalizeTabUrl(url) {
+  try {
+    const u = new URL(url);
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+    return u.protocol + "//" + u.host + path + u.search;
+  } catch (e) {
+    return url;
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * Event listeners
  * ------------------------------------------------------------------ */
 
@@ -283,15 +304,57 @@ chrome.runtime.onStartup.addListener(async () => {
   await applyAllSettings(settings);
 });
 
-// Track tab activity for Memory Saver / Hibernation.
+// Mark brand-new tabs so the dedup listener can distinguish them from
+// existing tabs navigating to a new URL.
+chrome.tabs.onCreated.addListener((tab) => {
+  newTabIds.add(tab.id);
+});
+
+// Track tab activity for Memory Saver / Hibernation,
+// AND perform tab deduplication for newly-created tabs.
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  tabLastActive[tabId] = Date.now();
+
+  // Deduplication: only fires once per new tab, only for http(s) URLs.
+  if (
+    newTabIds.has(tabId) &&
+    changeInfo.status === "loading" &&
+    changeInfo.url &&
+    (changeInfo.url.startsWith("http://") || changeInfo.url.startsWith("https://"))
+  ) {
+    newTabIds.delete(tabId); // Only check once per tab.
+    const s = await getSettings();
+    if (!s.tabDedupe) return;
+
+    const normalized = normalizeTabUrl(changeInfo.url);
+    let allTabs;
+    try {
+      allTabs = await chrome.tabs.query({});
+    } catch (e) {
+      return;
+    }
+    const existing = allTabs.find(
+      (t) => t.id !== tabId && t.url && normalizeTabUrl(t.url) === normalized
+    );
+    if (existing) {
+      try {
+        await chrome.tabs.update(existing.id, { active: true });
+        await chrome.windows.update(existing.windowId, { focused: true });
+        await chrome.tabs.remove(tabId);
+      } catch (e) {
+        // Tab may have already navigated or been closed — no-op.
+      }
+    }
+  }
+});
+
 chrome.tabs.onActivated.addListener((info) => {
   tabLastActive[info.tabId] = Date.now();
 });
-chrome.tabs.onUpdated.addListener((tabId) => {
-  tabLastActive[tabId] = Date.now();
-});
+
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabLastActive[tabId];
+  newTabIds.delete(tabId);
 });
 
 // Alarm handler for Tab Hibernation sweeps.
